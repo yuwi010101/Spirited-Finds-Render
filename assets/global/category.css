@@ -1,0 +1,261 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Uchen&display=swap');
+
+:root {
+    --ghibli-cream: #FDFBF5;
+    --ghibli-warm-paper: #F5EFE0;
+    --ghibli-card-bg: #FFFFFF;
+    --ghibli-forest: #2C4A34;        /* Deep Moss Forest Green */
+    --ghibli-forest-hover: #1E3424;
+    --ghibli-terracotta: #D9603B;    /* Calcifer Warm Flame */
+    --ghibli-terracotta-hover: #B84725;
+    --ghibli-gold: #E8A838;          /* Warm Sunset Gold */
+    --ghibli-soft-border: #E8DFCE;
+    --ghibli-text-dark: #2A332C;
+    --ghibli-text-muted: #65756B;
+    
+    --ghibli-shadow: 0 8px 24px rgba(44, 74, 52, 0.08);
+    --ghibli-hover-shadow: 0 16px 36px rgba(217, 96, 59, 0.22);
+    
+    --radius-storybook: 24px;
+    --radius-pill: 50px;
+    --bounce-transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --smooth-transition: all 0.3s ease;
+}
+
+body {
+    background-color: var(--ghibli-cream);
+    color: var(--ghibli-text-dark);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fredoka', 'Uchen', cursive;
+}
+
+/* --- CATEGORY HERO BANNER --- */
+.category-hero {
+    position: relative;
+    width: 100%;
+    min-height: 55vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: #ffffff;
+    text-align: center;
+    overflow: hidden;
+    margin-bottom: 40px;
+}
+
+.category-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(42, 51, 44, 0.55) 0%, rgba(42, 51, 44, 0.78) 100%);
+    z-index: 1;
+}
+
+.category-hero .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 800px;
+    padding: 20px;
+}
+
+.category-hero h3 {
+    font-size: 2.2rem;
+    color: var(--ghibli-gold);
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.6);
+    margin-bottom: 10px;
+}
+
+.category-hero h1 {
+    font-size: 3.6rem;
+    font-weight: 700;
+    text-shadow: 3px 3px 12px rgba(0,0,0,0.7);
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+}
+
+.category-hero p {
+    font-size: 1.25rem;
+    color: #FDFBF5;
+    text-shadow: 1px 1px 5px rgba(0,0,0,0.7);
+    margin-bottom: 25px;
+}
+
+.btn-ghibli-hero {
+    background-color: var(--ghibli-terracotta);
+    color: #ffffff !important;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    padding: 12px 35px;
+    border-radius: var(--radius-pill);
+    font-size: 1.1rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 6px 20px rgba(217, 96, 59, 0.4);
+    transition: var(--bounce-transition);
+    display: inline-block;
+    text-decoration: none !important;
+}
+
+.btn-ghibli-hero:hover {
+    background-color: var(--ghibli-terracotta-hover);
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 10px 25px rgba(217, 96, 59, 0.5);
+}
+
+/* --- WHIMSICAL PRODUCT CARDS (EXACT COPY FROM GLOBAL STYLE.CSS) --- */
+.product-card {
+    background: var(--ghibli-card-bg);
+    border-radius: var(--radius-storybook);
+    border: 2px solid var(--ghibli-soft-border);
+    box-shadow: var(--ghibli-shadow);
+    transition: var(--bounce-transition);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.product-card:hover {
+    transform: translateY(-8px) rotate(0.5deg);
+    border-color: var(--ghibli-gold);
+    box-shadow: 0 18px 38px rgba(44, 74, 52, 0.16);
+}
+
+.product-img-wrapper {
+    position: relative;
+    width: 100%;
+    height: 240px;
+    background: linear-gradient(135deg, #F9F5EC 0%, #EDE4D3 100%);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    border-bottom: 2px dashed var(--ghibli-soft-border);
+}
+
+.product-img-wrapper img {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain !important;
+    transition: var(--bounce-transition);
+}
+
+.product-card:hover .product-img-wrapper img {
+    transform: scale(1.06);
+}
+
+/* Floating Action Overlay Buttons */
+.product-actions {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: var(--bounce-transition);
+    z-index: 2;
+}
+
+.action-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #FFF;
+    border: 2px solid var(--ghibli-soft-border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ghibli-forest);
+    cursor: pointer;
+    transition: var(--bounce-transition);
+    text-decoration: none !important;
+}
+
+.action-btn:hover {
+    background: var(--ghibli-terracotta);
+    border-color: var(--ghibli-terracotta);
+    color: #FFF;
+    transform: scale(1.15) rotate(8deg);
+}
+
+.action-btn i {
+    font-size: 1.05rem;
+}
+
+.product-card-body {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.product-card-body h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--ghibli-forest);
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+
+.star-rating {
+    color: var(--ghibli-gold);
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.product-desc {
+    color: var(--ghibli-text-muted);
+    font-size: 0.92rem;
+    margin-bottom: 18px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.product-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    border-top: 1px solid var(--ghibli-soft-border);
+}
+
+.price-tag {
+    font-family: 'Fredoka', cursive;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--ghibli-terracotta);
+}
+
+.btn-add-cart-sm {
+    background: var(--ghibli-forest);
+    color: #FFF !important;
+    border: none;
+    padding: 9px 18px;
+    border-radius: var(--radius-pill);
+    font-family: 'Fredoka', sans-serif;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: var(--bounce-transition);
+    text-decoration: none !important;
+}
+
+.btn-add-cart-sm:hover {
+    background: var(--ghibli-forest-hover);
+    transform: translateY(-3px) scale(1.06);
+    box-shadow: 0 6px 16px rgba(44, 74, 52, 0.3);
+}

@@ -1,0 +1,125 @@
+PS D:\xampp\htdocs\Spirited-Finds> tree /F
+Folder PATH listing for volume HDD
+Volume serial number is 2415-3D8A
+D:.
+│   category.php
+│   index.php
+│   login.php
+│   logout.php
+│   product_details.php
+│   signup.php
+│   spirited_finds_db (1).sql
+│   tree structure.txt
+│   
+├───admin
+│       dashboard.php
+│       messages.php
+│       orders.php
+│       products.php
+│       
+├───assets
+│   ├───global
+│   │       admin-style.css
+│   │       auth.css
+│   │       category.css
+│   │       style.css
+│   │       
+│   └───images
+│           about.jpg
+│           add.png
+│           arrietty.jpg
+│           background.png
+│           background2.jpg
+│           banner2.gif
+│           bg1.jpg
+│           bg2.jpg
+│           bg3.jpg
+│           bg4.jpg
+│           bg5.jpg
+│           blue.gif
+│           blue1.gif
+│           blue2.gif
+│           blue3.gif
+│           blue4.gif
+│           Bookmarks.png
+│           Calcifer Plushie.png
+│           Calcifer T-Shirt.png
+│           Calendar.png
+│           Card Holder.png
+│           Carpet.png
+│           CatBus Fluffy.png
+│           Cookie Jar.png
+│           Crochet Totoro.png
+│           Duvet Cover Soft Sets.jpg
+│           DVDs & Blue-ray discs.png
+│           Ghibli Jibbitz.png
+│           Ghibli Keycaps.png
+│           Ghibli Studio Tote Bag.png
+│           Glass Cup with Lid & Straw.png
+│           Goosemans Totoro Lamp.png
+│           Hair Accessories.png
+│           heart.png
+│           Heron Plushie.png
+│           HMC Scenic.png
+│           howls.jpg
+│           How_ls Moving Castle Nail.png
+│           kiki.png
+│           Kiki_s Delivery Service Lunch Bag.png
+│           Kiki_s Delivery Wooden Stamp.png
+│           logo.png
+│           menu.png
+│           mononoke.jpg
+│           Mug.png
+│           My Neighbor Totoro Mei Hoodie.png
+│           My Neighbor Totoro Slippers.png
+│           My Neighbor Totoro Souns Book Vinyl.png
+│           nausicaa.jpg
+│           No-Face Dress Towel.png
+│           No-Face Plush.png
+│           Notebooks.png
+│           Plush Tote Bag.png
+│           Ponyo Charm Keychain.png
+│           Ponyo Plushie.jpg
+│           ponyo.jpg
+│           Princess Mononoke Scenic T-Shirt.png
+│           Purple Bottle Water.png
+│           search.png
+│           Soot Sprite Keychain.png
+│           Soot Sprite.png
+│           Soot Sprites Cardigan.png
+│           Soot Sprites Phone Case.png
+│           Soot Sprites Puzzle.png
+│           Spirited Away Hair Clamp.png
+│           Spirited Away Soot Sprites Joggers.png
+│           spiritedaway.jpg
+│           Stickers.png
+│           Studio Ghibli Apron.png
+│           Studio Ghibli Customize Shoes.png
+│           Studio Ghibli pins.png
+│           Sweatshirt.png
+│           Totoro Blanket.png
+│           Totoro Cap.png
+│           totoro night sky cardigan.png
+│           Totoro Stuff Toy.png
+│           totoro.jpg
+│           up-arrow.png
+│           user.png
+│           views.png
+│           vinyl protector sticker for nintendo switch.png
+│           Warawara Plushie.png
+│           windrises.jpg
+│           
+├───config
+│       db.php
+│       
+├───customer
+│       cart.php
+│       checkout.php
+│       my_orders.php
+│       order_success.php
+│       wishlist.php
+│       
+└───includes
+        footer.php
+        header.php
+        sidebar.php

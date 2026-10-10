@@ -1,0 +1,857 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&family=Uchen&display=swap');
+
+:root {
+    --ghibli-cream: #FDFBF5;
+    --ghibli-warm-paper: #F5EFE0;
+    --ghibli-card-bg: #FFFFFF;
+    --ghibli-forest: #2C4A34;        /* Deep Moss Forest Green */
+    --ghibli-forest-hover: #1E3424;
+    --ghibli-terracotta: #D9603B;    /* Calcifer Warm Flame */
+    --ghibli-terracotta-hover: #B84725;
+    --ghibli-gold: #E8A838;          /* Magical Warm Sunset Gold */
+    --ghibli-soft-border: #E8DFCE;
+    --ghibli-text-dark: #2A332C;
+    --ghibli-text-muted: #65756B;
+    
+    /* Playful Soft Shadows */
+    --ghibli-shadow: 0 8px 24px rgba(44, 74, 52, 0.08);
+    --ghibli-hover-shadow: 0 16px 36px rgba(217, 96, 59, 0.22);
+    
+    --radius-storybook: 24px;
+    --radius-pill: 50px;
+    
+    /* Playful Elastic Spring Transitions */
+    --bounce-transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --smooth-transition: all 0.3s ease;
+}
+
+/* Floating Animations */
+@keyframes ghibliFloat {
+    0% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-7px) rotate(1deg); }
+    100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes calciferPulse {
+    0%, 100% { box-shadow: 0 6px 20px rgba(217, 96, 59, 0.3); }
+    50% { box-shadow: 0 10px 28px rgba(232, 168, 56, 0.55); }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--ghibli-cream);
+    color: var(--ghibli-text-dark);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fredoka', 'Uchen', cursive;
+    letter-spacing: 0.3px;
+}
+
+/* --- AUTOMATIC SECTION CENTERING FIX --- */
+.container, 
+#box, 
+#offer, 
+#contact, 
+#about, 
+#product-list {
+    max-width: 1200px;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+/* Ensure Bootstrap row columns align centrally */
+.row {
+    justify-content: center !important;
+}
+
+/* --- WHIMSICAL NAVBAR --- */
+#navbar {
+    background: rgba(44, 74, 52, 0.94);
+    backdrop-filter: blur(12px);
+    padding: 14px 5%;
+    border-bottom: 3px solid rgba(232, 168, 56, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+#logo {
+    font-family: 'Fredoka', cursive;
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: #FFF !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ghibli-logo-img {
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));
+    transition: var(--bounce-transition);
+}
+
+#logo:hover .ghibli-logo-img {
+    transform: rotate(-12deg) scale(1.15);
+}
+
+.nav-link {
+    color: #FDFBF5 !important;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 500;
+    font-size: 1.1rem;
+    padding: 8px 18px !important;
+    border-radius: var(--radius-pill);
+    transition: var(--bounce-transition);
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--ghibli-gold) !important;
+    transform: translateY(-3px) scale(1.05);
+}
+
+/* Custom Ghibli Dropdown */
+.ghibli-dropdown-menu {
+    background: var(--ghibli-warm-paper);
+    border: 2px solid var(--ghibli-soft-border);
+    border-radius: 18px;
+    box-shadow: var(--ghibli-shadow);
+    padding: 10px;
+}
+
+.ghibli-dropdown-menu .dropdown-item {
+    font-family: 'Fredoka', sans-serif;
+    color: var(--ghibli-forest);
+    border-radius: 12px;
+    transition: var(--bounce-transition);
+}
+
+.ghibli-dropdown-menu .dropdown-item:hover {
+    background: var(--ghibli-terracotta);
+    color: #FFF;
+    transform: translateX(6px);
+}
+
+.nav-icons-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.nav-icon-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFF;
+    cursor: pointer;
+    transition: var(--bounce-transition);
+    text-decoration: none !important;
+}
+
+.nav-icon-btn:hover {
+    background: var(--ghibli-terracotta);
+    color: #FFF;
+    transform: translateY(-4px) rotate(8deg) scale(1.12);
+    box-shadow: 0 6px 15px rgba(217, 96, 59, 0.4);
+}
+
+.nav-icon-btn svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+}
+
+/* --- HERO SECTION --- */
+.home {
+    width: 100%;
+    min-height: 85vh;
+    background: linear-gradient(180deg, rgba(42, 51, 44, 0.45) 0%, rgba(42, 51, 44, 0.75) 100%), 
+                url('../images/background2.jpg') center/cover no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    position: relative;
+}
+
+.home .content {
+    max-width: 780px;
+    text-align: center;
+    color: #FFF;
+}
+
+.home .content h3 {
+    font-size: 4rem;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    text-shadow: 0 4px 18px rgba(0,0,0,0.6);
+    animation: ghibliFloat 4s ease-in-out infinite;
+}
+
+.home .content p {
+    font-size: 1.3rem;
+    margin-bottom: 32px;
+    opacity: 0.95;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+}
+
+/* --- GHIBLI BUTTONS --- */
+.btn-ghibli-primary {
+    background: var(--ghibli-terracotta);
+    color: #FFF !important;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    padding: 14px 38px;
+    border-radius: var(--radius-pill);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    font-size: 1.15rem;
+    animation: calciferPulse 3s infinite;
+    transition: var(--bounce-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none !important;
+    cursor: pointer;
+}
+
+.btn-ghibli-primary:hover {
+    background: var(--ghibli-terracotta-hover);
+    transform: translateY(-5px) scale(1.06) rotate(-1deg);
+    color: #FFF !important;
+}
+
+.btn-ghibli-outline {
+    border: 2px solid #FFF;
+    color: #FFF !important;
+    font-family: 'Fredoka', sans-serif;
+    border-radius: var(--radius-pill);
+    padding: 6px 18px;
+    transition: var(--bounce-transition);
+    text-decoration: none !important;
+}
+
+.btn-ghibli-outline:hover {
+    background: #FFF;
+    color: var(--ghibli-forest) !important;
+    transform: translateY(-2px);
+}
+
+/* --- SECTION HEADINGS --- */
+.section-title {
+    text-align: center;
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: var(--ghibli-forest);
+    margin: 65px 0 35px;
+    position: relative;
+}
+
+.section-title::after {
+    content: '✦ ✦ ✦';
+    display: block;
+    font-size: 1rem;
+    color: var(--ghibli-gold);
+    margin-top: 6px;
+    letter-spacing: 4px;
+}
+
+/* --- FEATURED FINDS CARDS (Fixed Zoom & Fixed Center) --- */
+#box .card,
+.category-card {
+    background: var(--ghibli-warm-paper);
+    border: 2px solid var(--ghibli-soft-border);
+    border-radius: var(--radius-storybook);
+    box-shadow: var(--ghibli-shadow);
+    overflow: hidden;
+    height: 290px;
+    transition: var(--bounce-transition);
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px; /* Padding para hindi lumagpas ang image sa gilid */
+}
+
+#box .card:hover,
+.category-card:hover {
+    transform: translateY(-8px) rotate(-1deg);
+    box-shadow: var(--ghibli-hover-shadow);
+    border-color: var(--ghibli-gold);
+}
+
+/* Inayos ang image fit: Naka CONTAIN na para buong paninda ang kita nang hindi naka-zoom */
+#box .card img,
+.category-card img,
+.category-img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain !important;
+    transition: var(--bounce-transition);
+}
+
+#box .card:hover img,
+.category-card:hover img {
+    transform: scale(1.05); /* Gentle scale, natural tignan */
+}
+
+/* Glassmorphism Hover Overlay */
+#box .overlay,
+.category-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(44, 74, 52, 0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 2;
+}
+
+#box .card:hover .overlay,
+.category-card:hover .category-overlay {
+    opacity: 1;
+}
+
+#box .overlay h3,
+.category-overlay h3 {
+    color: #FFFFFF !important;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    font-family: 'Fredoka', cursive;
+    margin: 0;
+}
+
+/* --- WHIMSICAL PRODUCT CARDS --- */
+.product-card {
+    background: var(--ghibli-card-bg);
+    border-radius: var(--radius-storybook);
+    border: 2px solid var(--ghibli-soft-border);
+    box-shadow: var(--ghibli-shadow);
+    transition: var(--bounce-transition);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.product-card:hover {
+    transform: translateY(-8px) rotate(0.5deg);
+    border-color: var(--ghibli-gold);
+    box-shadow: 0 18px 38px rgba(44, 74, 52, 0.16);
+}
+
+.product-img-wrapper {
+    position: relative;
+    width: 100%;
+    height: 240px;
+    background: linear-gradient(135deg, #F9F5EC 0%, #EDE4D3 100%);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    border-bottom: 2px dashed var(--ghibli-soft-border);
+}
+
+.product-img-wrapper img {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain !important;
+    transition: var(--bounce-transition);
+}
+
+.product-card:hover .product-img-wrapper img {
+    transform: scale(1.06);
+}
+
+/* Floating Action Overlay Buttons */
+.product-actions {
+    position: absolute;
+    top: 15px;
+    right: -60px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: var(--bounce-transition);
+    z-index: 2;
+}
+
+.product-card:hover .product-actions {
+    right: 15px;
+}
+
+.action-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #FFF;
+    border: 2px solid var(--ghibli-soft-border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ghibli-forest);
+    cursor: pointer;
+    transition: var(--bounce-transition);
+}
+
+.action-btn:hover {
+    background: var(--ghibli-terracotta);
+    border-color: var(--ghibli-terracotta);
+    color: #FFF;
+    transform: scale(1.15) rotate(8deg);
+}
+
+.action-btn svg {
+    width: 20px;
+    height: 22px;
+    fill: currentColor;
+}
+
+.product-card-body {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.product-card-body h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--ghibli-forest);
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+
+.star-rating {
+    color: var(--ghibli-gold);
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.product-desc {
+    color: var(--ghibli-text-muted);
+    font-size: 0.92rem;
+    margin-bottom: 18px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.product-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    border-top: 1px solid var(--ghibli-soft-border);
+}
+
+.price-tag {
+    font-family: 'Fredoka', cursive;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--ghibli-terracotta);
+}
+
+.btn-add-cart-sm {
+    background: var(--ghibli-forest);
+    color: #FFF !important;
+    border: none;
+    padding: 9px 18px;
+    border-radius: var(--radius-pill);
+    font-family: 'Fredoka', sans-serif;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: var(--bounce-transition);
+    text-decoration: none !important;
+}
+
+.btn-add-cart-sm:hover {
+    background: var(--ghibli-forest-hover);
+    transform: translateY(-3px) scale(1.06);
+    box-shadow: 0 6px 16px rgba(44, 74, 52, 0.3);
+}
+
+.btn-add-cart-sm svg {
+    width: 17px;
+    height: 17px;
+    fill: currentColor;
+}
+
+/* --- BANNER --- */
+.banner {
+    width: 100%;
+    min-height: 380px;
+    background: linear-gradient(90deg, rgba(44, 74, 52, 0.92) 0%, rgba(44, 74, 52, 0.65) 100%), 
+                url('../images/banner2.gif') center/cover no-repeat;
+    border-radius: var(--radius-storybook);
+    border: 3px solid var(--ghibli-gold);
+    display: flex;
+    align-items: center;
+    padding: 40px 8%;
+    margin: 60px auto;
+    color: #FFF;
+    box-shadow: var(--ghibli-shadow);
+}
+
+.banner .content h3 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.banner .content p {
+    font-size: 1.25rem;
+    margin-bottom: 25px;
+    opacity: 0.92;
+}
+
+/* --- CONTACT & ABOUT (Center Aligned) --- */
+#about .card {
+    border-radius: var(--radius-storybook);
+    overflow: hidden;
+    border: 2px solid var(--ghibli-soft-border);
+    box-shadow: var(--ghibli-shadow);
+}
+
+#about p {
+    font-size: 1.08rem;
+    color: var(--ghibli-text-dark);
+    line-height: 1.8;
+}
+
+#contact {
+    margin: 60px auto;
+    text-align: center;
+}
+
+#contact form,
+.contact-form-container {
+    max-width: 750px;
+    margin: 0 auto !important;
+}
+
+#contact .form-control {
+    background: #FFF;
+    border: 2px solid var(--ghibli-soft-border);
+    border-radius: 16px;
+    padding: 14px 18px;
+    font-size: 1rem;
+    margin-bottom: 16px;
+    transition: var(--smooth-transition);
+}
+
+#contact .form-control:focus {
+    border-color: var(--ghibli-forest);
+    box-shadow: 0 0 0 4px rgba(44, 74, 52, 0.12);
+    outline: none;
+}
+
+/* --- OFFERS (Fully Centered Cards) --- */
+#offer {
+    margin: 70px auto;
+}
+
+.offer-card {
+    text-align: center;
+    padding: 32px 20px;
+    background: #FFF;
+    border: 2px solid var(--ghibli-soft-border);
+    border-radius: var(--radius-storybook);
+    box-shadow: var(--ghibli-shadow);
+    transition: var(--bounce-transition);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.offer-card:hover {
+    transform: translateY(-8px) rotate(-1deg);
+    border-color: var(--ghibli-gold);
+    box-shadow: var(--ghibli-hover-shadow);
+}
+
+.offer-card svg {
+    width: 48px;
+    height: 48px;
+    fill: var(--ghibli-terracotta);
+    margin-bottom: 15px;
+    transition: var(--bounce-transition);
+}
+
+.offer-card:hover svg {
+    transform: scale(1.2) rotate(10deg);
+}
+
+.offer-card h5 {
+    font-weight: 700;
+    color: var(--ghibli-forest);
+    margin-bottom: 6px;
+}
+
+/* --- FOOTER --- */
+#footer {
+    background: #1C261F;
+    color: #A3B5A8;
+    padding-top: 60px;
+    border-top: 4px solid var(--ghibli-gold);
+}
+
+#footer h3, #footer h4 {
+    color: #FFF;
+}
+
+#footer a {
+    color: #A3B5A8;
+    text-decoration: none;
+    transition: var(--smooth-transition);
+}
+
+#footer a:hover {
+    color: var(--ghibli-gold);
+    padding-left: 4px;
+}
+
+/* --- CART DRAWER --- */
+.cart-container {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 390px;
+    height: 100%;
+    background: var(--ghibli-cream);
+    border-left: 3px solid var(--ghibli-soft-border);
+    box-shadow: -10px 0 35px rgba(0,0,0,0.2);
+    transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 1050;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+}
+
+.cart-container.active {
+    right: 0;
+}
+
+.cart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px dashed var(--ghibli-soft-border);
+    padding-bottom: 15px;
+}
+
+.close-cart {
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--ghibli-text-muted);
+    transition: var(--bounce-transition);
+}
+
+.close-cart:hover {
+    color: var(--ghibli-terracotta);
+    transform: rotate(90deg);
+}
+
+.arrow-top {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    background: var(--ghibli-forest);
+    color: #FFF;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    transition: var(--bounce-transition);
+    z-index: 99;
+}
+
+.arrow-top:hover {
+    background: var(--ghibli-terracotta);
+    transform: translateY(-6px) scale(1.1);
+    color: #FFF;
+}
+
+/* --- PRODUCT DETAILS SECTION --- */
+.product-details-section {
+    padding: 40px 0 60px;
+}
+
+.product-details-container {
+    background: var(--ghibli-card-bg);
+    border: 2px solid var(--ghibli-soft-border);
+    border-radius: var(--radius-storybook);
+    padding: 35px;
+    box-shadow: var(--ghibli-shadow);
+}
+
+.product-main-image-box {
+    background: linear-gradient(135deg, #F9F5EC 0%, #EDE4D3 100%);
+    border: 2px dashed var(--ghibli-soft-border);
+    border-radius: var(--radius-storybook);
+    padding: 25px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 380px;
+}
+
+.product-main-image-box img {
+    max-width: 100%;
+    max-height: 350px;
+    object-fit: contain;
+    transition: var(--bounce-transition);
+}
+
+.product-main-image-box:hover img {
+    transform: scale(1.05) rotate(1deg);
+}
+
+.product-category-badge {
+    display: inline-block;
+    background: var(--ghibli-forest);
+    color: #FFF;
+    padding: 5px 16px;
+    border-radius: var(--radius-pill);
+    font-family: 'Fredoka', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 12px;
+}
+
+.product-details-title {
+    font-family: 'Fredoka', cursive;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--ghibli-forest);
+    margin-bottom: 10px;
+}
+
+.product-details-price {
+    font-family: 'Fredoka', cursive;
+    font-size: 2rem;
+    color: var(--ghibli-terracotta);
+    font-weight: 700;
+}
+
+.rating-stars {
+    color: var(--ghibli-gold);
+    font-size: 1.1rem;
+}
+
+.product-description-text {
+    color: var(--ghibli-text-dark);
+    font-size: 1rem;
+    line-height: 1.7;
+    margin: 20px 0;
+}
+
+.qty-input-ghibli {
+    width: 75px;
+    padding: 10px;
+    text-align: center;
+    border-radius: var(--radius-pill);
+    border: 2px solid var(--ghibli-soft-border);
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    color: var(--ghibli-forest);
+    outline: none;
+    transition: var(--smooth-transition);
+}
+
+.qty-input-ghibli:focus {
+    border-color: var(--ghibli-forest);
+    box-shadow: 0 0 0 3px rgba(44, 74, 52, 0.15);
+}
+
+.btn-wishlist-ghibli {
+    background: #FDF2F0;
+    color: var(--ghibli-terracotta);
+    border: 2px solid var(--ghibli-soft-border);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: var(--bounce-transition);
+    text-decoration: none !important;
+}
+
+.btn-wishlist-ghibli:hover {
+    background: var(--ghibli-terracotta);
+    color: #FFF;
+    transform: scale(1.1) rotate(8deg);
+}
+
+.badge-ghibli-stock {
+    background: rgba(44, 74, 52, 0.12);
+    color: var(--ghibli-forest);
+    font-family: 'Fredoka', sans-serif;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.badge-ghibli-out {
+    background: rgba(217, 96, 59, 0.12);
+    color: var(--ghibli-terracotta);
+    font-family: 'Fredoka', sans-serif;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+/* Siguraduhing nasa ibabaw ng lahat ng card at animation ang Navbar at Dropdown */
+#navbar {
+    position: relative;
+    z-index: 1050 !important;
+}
+
+.dropdown-menu, 
+.ghibli-dropdown-menu {
+    z-index: 1055 !important;
+}

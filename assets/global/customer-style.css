@@ -1,0 +1,134 @@
+/* ==========================================================================
+   SPIRITED FINDS - CUSTOMER & CART SPECIFIC STYLES
+   (Naka-scope lang sa Cart at Customer pages para HINDI maapektuhan ang Header/Footer)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   CART PAGE STYLES & LAYOUT
+   -------------------------------------------------------------------------- */
+.cart-page-wrapper {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+.cart-title {
+    font-family: 'Fredoka', cursive, sans-serif;
+    color: var(--ghibli-forest, #2C4A34);
+    font-size: 1.8rem;
+}
+
+.badge-ghibli-pill {
+    background-color: rgba(44, 74, 52, 0.12);
+    color: var(--ghibli-forest, #2C4A34);
+    border-radius: var(--radius-pill, 50px);
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+}
+
+/* CART TABLE CARD */
+.cart-table-card {
+    border-radius: var(--radius-storybook, 24px);
+    box-shadow: var(--ghibli-shadow, 0 8px 24px rgba(44, 74, 52, 0.08));
+    background-color: #ffffff;
+    border: 2px solid var(--ghibli-soft-border, #E8DFCE);
+    overflow: hidden;
+}
+
+.cart-table thead {
+    background-color: var(--ghibli-warm-paper, #F5EFE0);
+    border-bottom: 2px solid var(--ghibli-soft-border, #E8DFCE);
+}
+
+.cart-table th {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    color: var(--ghibli-forest, #2C4A34);
+    border: none;
+    padding: 1rem;
+}
+
+.cart-table td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-top: 1px solid var(--ghibli-soft-border, #E8DFCE);
+}
+
+/* PERMANENT IMAGE SIZE FIX (65x65px) */
+.cart-item-img {
+    width: 65px !important;
+    height: 65px !important;
+    max-width: 65px !important;
+    max-height: 65px !important;
+    object-fit: cover !important;
+    border-radius: 12px;
+    border: 1px solid var(--ghibli-soft-border, #E8DFCE);
+    flex-shrink: 0;
+}
+
+.cart-item-title {
+    color: var(--ghibli-text-dark, #2A332C);
+    font-size: 0.95rem;
+}
+
+.cart-qty-input {
+    width: 75px;
+    border-radius: var(--radius-pill, 50px);
+    border: 2px solid var(--ghibli-soft-border, #E8DFCE);
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    text-align: center;
+    color: var(--ghibli-forest, #2C4A34);
+    outline: none;
+    transition: var(--smooth-transition, all 0.3s ease);
+}
+
+.cart-qty-input:focus {
+    border-color: var(--ghibli-forest, #2C4A34);
+    box-shadow: 0 0 0 3px rgba(44, 74, 52, 0.15);
+}
+
+.text-ghibli-accent {
+    color: var(--ghibli-terracotta, #D9603B) !important;
+}
+
+.btn-cart-delete {
+    color: #dc3545;
+    background-color: #fff5f5;
+    border-radius: 10px;
+    padding: 0.4rem 0.7rem;
+    transition: var(--bounce-transition, all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1));
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-cart-delete:hover {
+    background-color: #dc3545;
+    color: #ffffff;
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* ORDER SUMMARY CARD & EMPTY/AUTH CARDS */
+.cart-summary-card {
+    border-radius: var(--radius-storybook, 24px);
+    box-shadow: var(--ghibli-shadow, 0 8px 24px rgba(44, 74, 52, 0.08));
+    background-color: #ffffff;
+    border: 2px solid var(--ghibli-soft-border, #E8DFCE);
+    position: sticky;
+    top: 90px;
+}
+
+.cart-summary-header {
+    font-family: 'Fredoka', cursive, sans-serif;
+    color: var(--ghibli-forest, #2C4A34);
+    font-size: 1.3rem;
+}
+
+.cart-auth-card, 
+.cart-empty-card {
+    border-radius: var(--radius-storybook, 24px);
+    box-shadow: var(--ghibli-shadow, 0 8px 24px rgba(44, 74, 52, 0.08));
+    border: 2px solid var(--ghibli-soft-border, #E8DFCE);
+    background-color: #ffffff;
+}

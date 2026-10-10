@@ -1,0 +1,221 @@
+/* ===================================================
+   SPIRITED FINDS - AUTHENTICATION STYLES (auth.css)
+   =================================================== */
+
+/* Hero Auth Section Container */
+.auth-wrapper {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    position: relative;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+/* Dark Overlay para lumitaw ang Card */
+.auth-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
+    pointer-events: none;
+}
+
+/* Floating Glassmorphism Auth Card */
+.auth-card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 440px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 28px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2), 0 0 30px rgba(224, 109, 68, 0.15);
+    padding: 40px 36px;
+    transition: all 0.4s ease;
+    animation: authFloatUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25), 0 0 35px rgba(224, 109, 68, 0.25);
+}
+
+@keyframes authFloatUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Standalone Logo Only (Inalis na ang Circle Wrapper) */
+.auth-logo-standalone {
+    display: inline-block;
+    margin-bottom: 12px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.auth-card:hover .auth-logo-standalone {
+    transform: scale(1.12) rotate(-5deg);
+}
+
+.auth-logo-standalone img {
+    width: 75px;
+    height: auto;
+    filter: drop-shadow(0 6px 12px rgba(224, 109, 68, 0.25));
+}
+
+/* Titles */
+.auth-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.auth-subtitle {
+    color: #718096;
+    font-size: 0.9rem;
+    margin-bottom: 25px;
+}
+
+/* Custom Input Groups */
+.auth-form .form-label {
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.auth-input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.auth-input-group .input-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #a0aec0;
+    font-size: 1.1rem;
+    transition: color 0.3s ease;
+    z-index: 5;
+}
+
+.auth-input-group .form-control {
+    height: 48px;
+    padding-left: 48px;
+    padding-right: 16px;
+    border-radius: 14px;
+    border: 2px solid #e2e8f0;
+    background-color: #f8fafc;
+    font-size: 0.95rem;
+    color: #2d3748;
+    transition: all 0.3s ease;
+}
+
+.auth-input-group .form-control:focus {
+    background-color: #ffffff;
+    border-color: #e06d44;
+    box-shadow: 0 0 0 4px rgba(224, 109, 68, 0.15);
+    outline: none;
+}
+
+.auth-input-group:focus-within .input-icon {
+    color: #e06d44;
+}
+
+/* Vibrant Terracotta Submit Button */
+.btn-auth-submit {
+    width: 100%;
+    height: 50px;
+    background: linear-gradient(135deg, #eb7853 0%, #e06d44 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    box-shadow: 0 8px 22px rgba(224, 109, 68, 0.35);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-auth-submit:hover {
+    background: linear-gradient(135deg, #e06d44 0%, #c9572f 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(224, 109, 68, 0.45);
+    color: #ffffff;
+}
+
+.btn-auth-submit:active {
+    transform: translateY(0);
+}
+
+/* Embedded Quote Text Only (Walang Box/Container) */
+.auth-quote-embedded {
+    margin-top: 22px;
+    margin-bottom: 6px;
+    text-align: center;
+}
+
+.auth-quote-text {
+    font-style: italic;
+    color: #718096;
+    font-size: 0.88rem;
+    margin: 0;
+    opacity: 0.9;
+}
+
+/* Footer Link Section */
+.auth-footer-text {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 0.9rem;
+    color: #718096;
+}
+
+.auth-footer-text a {
+    color: #e06d44;
+    font-weight: 700;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.auth-footer-text a:hover {
+    color: #b5451f;
+    text-decoration: underline;
+}
+
+    .auth-input-group {
+        position: relative;
+    }
+    /* Style para sa password toggle icon */
+    .password-toggle-icon {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #6c757d;
+        z-index: 10;
+        transition: color 0.2s ease;
+    }
+    .password-toggle-icon:hover {
+        color: #2c3e50;
+    }

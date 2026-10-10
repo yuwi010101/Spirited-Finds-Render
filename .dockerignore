@@ -1,0 +1,10 @@
+.git
+.github
+.env
+.env.*
+**/.env
+**/.env.*
+**/*.sql
+**/*.log
+tree structure.txt
+.DS_Store

@@ -1,0 +1,27 @@
+# This Blueprint is optional if you create the Render Docker web service directly.
+services:
+  - type: web
+    name: spirited-finds-php
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: render-php
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: commit
+    healthCheckPath: /healthz.php
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: DB_REQUIRE_REMOTE
+        value: "1"
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
