@@ -1,7 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../includes/security.php';
 
 require_once __DIR__ . '/../config/db.php';
 
@@ -18,51 +16,68 @@ $message_type = '';
 // CRUD / ORDER STATUS OPERATIONS
 // ==========================================
 
-// 1. UPDATE ORDER STATUS
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_status') {
-    $order_id = intval($_POST['order_id']);
-    $new_status = trim($_POST['status']);
-
-    try {
-        if (isset($conn) && $conn instanceof mysqli) {
-            $stmt = $conn->prepare("UPDATE orders SET status = ? WHERE order_id = ?");
-            $stmt->bind_param("si", $new_status, $order_id);
-            $stmt->execute();
-        } elseif (isset($pdo)) {
-            $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE order_id = ?");
-            $stmt->execute([$new_status, $order_id]);
+// Order status changes are POST-only, CSRF protected, transactional, and audited.
+// Cancelled orders release reserved stock exactly once.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_status') {
+    csrf_verify();
+    $order_id = filter_var($_POST['order_id'] ?? null, FILTER_VALIDATE_INT);
+    $new_status = (string) ($_POST['status'] ?? '');
+    $allowed = [
+        'Pending' => ['Processing', 'Cancelled'],
+        'Processing' => ['Shipped', 'Cancelled'],
+        'Shipped' => ['Completed'],
+        'Completed' => [],
+        'Cancelled' => [],
+    ];
+    if ($order_id === false || $order_id < 1 || !array_key_exists($new_status, $allowed)) {
+        $message = 'Invalid order or status selected.';
+        $message_type = 'danger';
+    } else {
+        $conn->begin_transaction();
+        try {
+            $select = $conn->prepare('SELECT status FROM orders WHERE order_id = ? FOR UPDATE');
+            $select->bind_param('i', $order_id);
+            $select->execute();
+            $order = $select->get_result()->fetch_assoc();
+            $select->close();
+            if (!$order) {
+                throw new DomainException('Order was not found.');
+            }
+            $old = $order['status'];
+            if (!in_array($new_status, $allowed[$old] ?? [], true)) {
+                throw new DomainException('Invalid order status transition. Refresh the page and try again.');
+            }
+            if ($new_status === 'Cancelled') {
+                $items = $conn->prepare('SELECT product_id, quantity FROM order_items WHERE order_id = ?');
+                $items->bind_param('i', $order_id);
+                $items->execute();
+                $result = $items->get_result();
+                $restore = $conn->prepare('UPDATE products SET stock = stock + ? WHERE product_id = ?');
+                while ($row = $result->fetch_assoc()) {
+                    $quantity = (int)$row['quantity'];
+                    $product = (int)$row['product_id'];
+                    $restore->bind_param('ii', $quantity, $product);
+                    $restore->execute();
+                }
+                $restore->close();
+                $items->close();
+            }
+            $update = $conn->prepare('UPDATE orders SET status = ? WHERE order_id = ?');
+            $update->bind_param('si', $new_status, $order_id);
+            $update->execute();
+            $update->close();
+            $conn->commit();
+            $_SESSION['flash_message'] = "Order #{$order_id} marked {$new_status}.";
+            $_SESSION['flash_type'] = 'success';
+            header('Location: orders.php', true, 303);
+            exit();
+        } catch (Throwable $e) {
+            $conn->rollback();
+            error_log('Order status update failed: ' . $e->getMessage());
+            $message = $e instanceof DomainException ? $e->getMessage() :
+                'Unable to update this order. Please try again.';
+            $message_type = 'danger';
         }
-
-        $_SESSION['flash_message'] = "Order #{$order_id} status updated to successfully!";
-        $_SESSION['flash_type'] = "success";
-        header("Location: orders.php");
-        exit();
-    } catch (Exception $e) {
-        $message = "Error updating order status: " . $e->getMessage();
-        $message_type = "danger";
-    }
-}
-
-// 2. DELETE ORDER
-if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
-    $order_id = intval($_GET['id']);
-    try {
-        if (isset($conn) && $conn instanceof mysqli) {
-            // Delete order items first if applicable
-            $conn->query("DELETE FROM order_items WHERE order_id = $order_id");
-            $conn->query("DELETE FROM orders WHERE order_id = $order_id");
-        } elseif (isset($pdo)) {
-            $pdo->prepare("DELETE FROM order_items WHERE order_id = ?")->execute([$order_id]);
-            $pdo->prepare("DELETE FROM orders WHERE order_id = ?")->execute([$order_id]);
-        }
-
-        $_SESSION['flash_message'] = "Order #{$order_id} deleted successfully!";
-        $_SESSION['flash_type'] = "success";
-        header("Location: orders.php");
-        exit();
-    } catch (Exception $e) {
-        $message = "Error deleting order: " . $e->getMessage();
-        $message_type = "danger";
     }
 }
 
@@ -308,6 +323,8 @@ if (!empty($_SESSION['first_name'])) {
                                             <?= !empty(trim($ord['customer_name'])) ? htmlspecialchars($ord['customer_name']) : 'Guest Customer' ?>
                                         </div>
                                         <small class="text-muted d-block"><?= htmlspecialchars($ord['customer_email'] ?? 'No email') ?></small>
+                                        <small class="text-muted d-block">Ship to: <?= esc($ord['recipient_name'] ?? 'Not recorded') ?> · <?= esc($ord['contact_phone'] ?? '') ?></small>
+                                        <small class="text-muted d-block text-truncate" style="max-width:270px;" title="<?= esc($ord['delivery_address'] ?? '') ?>"><?= esc($ord['delivery_address'] ?? '') ?></small>
                                     </td>
                                     <td>
                                         <small class="text-dark font-weight-500">
@@ -346,11 +363,7 @@ if (!empty($_SESSION['first_name'])) {
                                         </button>
                                         
                                         <!-- Delete Order -->
-                                        <a href="orders.php?action=delete&id=<?= $ord['order_id'] ?>" 
-                                           class="btn-action-icon text-danger ml-1" 
-                                           onclick="return confirm('Are you sure you want to delete Order #<?= $ord['order_id'] ?>?');">
-                                            <i class="fa-solid fa-trash" title="Delete Order"></i>
-                                        </a>
+                                        <span class="text-muted ml-1 small" title="Order history is retained for customer safety"><i class="fa-solid fa-shield-halved"></i></span>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -384,6 +397,7 @@ if (!empty($_SESSION['first_name'])) {
                 </button>
             </div>
             <form action="orders.php" method="POST">
+                <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="update_status">
                 <input type="hidden" name="order_id" id="status_order_id">
                 

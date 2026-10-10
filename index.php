@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include DB configuration
+require_once 'includes/security.php';
 include 'config/db.php';
 
 // Safe Helper Function: Automatic image path resolver
@@ -34,6 +35,7 @@ include 'includes/header.php';
 // Processing for Contact Us Form (Safeguarded with Prepared Statements)
 $contact_msg = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['send_contact'])) {
+    csrf_verify();
     $name    = trim($_POST['name'] ?? '');
     $email   = trim($_POST['email'] ?? '');
     $phone   = trim($_POST['phone'] ?? '');
@@ -162,9 +164,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['send_contact'])) {
                                     <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
                                 </a>
                                 <!-- HEART BUTTON: Add to Wishlist or Redirect to Login -->
-                                <a href="<?php echo $wishlist_link; ?>" class="action-btn" title="Add to Wishlist">
-                                    <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                                </a>
+                                <?php if ($is_logged_in): ?>
+                                  <form action="customer/wishlist.php" method="POST" class="d-inline">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="action" value="add">
+                                    <input type="hidden" name="product_id" value="<?php echo (int) $pid; ?>">
+                                    <button type="submit" class="action-btn border-0" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                  </form>
+                                  <?php else: ?>
+                                  <a href="login.php" class="action-btn" title="Log in to use wishlist"><i class="fas fa-heart"></i></a>
+                                  <?php endif; ?>
                             </div>
                         </div>
 
@@ -183,9 +192,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['send_contact'])) {
                             <div class="product-footer">
                                 <span class="price-tag">₱<?php echo number_format($prod['price'], 2); ?></span>
                                 <!-- ADD TO CART BUTTON: Adds to Cart or Redirects to Login -->
-                                <a href="<?php echo $cart_link; ?>" class="btn-add-cart-sm">
-                                    <i class="fas fa-shopping-cart"></i> Add Cart
-                                </a>
+                                <?php if ($is_logged_in): ?>
+                                    <form action="customer/cart.php" method="POST" class="d-inline">
+                                        <?php echo csrf_field(); ?>
+                                        <input type="hidden" name="action" value="add">
+                                        <input type="hidden" name="product_id" value="<?php echo (int)$pid; ?>">
+                                        <button type="submit" class="btn-add-cart-sm border-0"><i class="fas fa-shopping-cart"></i> Add Cart</button>
+                                    </form>
+                                <?php else: ?>
+                                    <a href="login.php" class="btn-add-cart-sm"><i class="fas fa-shopping-cart"></i> Log in to buy</a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -226,9 +242,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['send_contact'])) {
                                     <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
                                 </a>
                                 <!-- HEART BUTTON: Add to Wishlist or Redirect to Login -->
-                                <a href="<?php echo $swishlist_link; ?>" class="action-btn" title="Add to Wishlist">
-                                    <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                                </a>
+                                <?php if ($is_logged_in): ?>
+                                  <form action="customer/wishlist.php" method="POST" class="d-inline">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="action" value="add">
+                                    <input type="hidden" name="product_id" value="<?php echo (int) $spid; ?>">
+                                    <button type="submit" class="action-btn border-0" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                                  </form>
+                                  <?php else: ?>
+                                  <a href="login.php" class="action-btn" title="Log in to use wishlist"><i class="fas fa-heart"></i></a>
+                                  <?php endif; ?>
                             </div>
                         </div>
 
@@ -247,9 +270,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['send_contact'])) {
                             <div class="product-footer">
                                 <span class="price-tag">₱<?php echo number_format($sprod['price'], 2); ?></span>
                                 <!-- ADD TO CART BUTTON: Adds to Cart or Redirects to Login -->
-                                <a href="<?php echo $scart_link; ?>" class="btn-add-cart-sm">
-                                    <i class="fas fa-shopping-cart"></i> Add Cart
-                                </a>
+                                <?php if ($is_logged_in): ?>
+                                    <form action="customer/cart.php" method="POST" class="d-inline">
+                                        <?php echo csrf_field(); ?>
+                                        <input type="hidden" name="action" value="add">
+                                        <input type="hidden" name="product_id" value="<?php echo (int)$spid; ?>">
+                                        <button type="submit" class="btn-add-cart-sm border-0"><i class="fas fa-shopping-cart"></i> Add Cart</button>
+                                    </form>
+                                <?php else: ?>
+                                    <a href="login.php" class="btn-add-cart-sm"><i class="fas fa-shopping-cart"></i> Log in to buy</a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -286,6 +316,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['send_contact'])) {
         <div class="col-md-8">
             <?php echo $contact_msg; ?>
             <form action="index.php#contact" method="POST">
+                            <?php echo csrf_field(); ?>
                 <div class="form-row row">
                     <div class="col-md-4 mb-3">
                         <input type="text" class="form-control" name="name" placeholder="Your Name" required>

@@ -200,10 +200,19 @@ include 'includes/header.php';
                             <i class="fas fa-shopping-cart mr-1"></i> Add to Cart
                         </button>
 
-                        <a href="<?php echo $main_wishlist_link; ?>" class="btn btn-outline-danger px-3 py-2" title="Add to Wishlist">
-                            <i class="fas fa-heart"></i>
-                        </a>
+                        <?php if ($is_logged_in): ?>
+                             <button type="submit" form="product-wishlist-form" class="btn btn-outline-danger px-3 py-2" title="Add to Wishlist"><i class="fas fa-heart"></i></button>
+                          <?php else: ?>
+                             <a href="login.php" class="btn btn-outline-danger px-3 py-2" title="Log in to add to wishlist"><i class="fas fa-heart"></i></a>
+                          <?php endif; ?>
                     </form>
+                    <?php if ($is_logged_in): ?>
+                    <form action="customer/wishlist.php" method="POST" id="product-wishlist-form">
+                        <?php echo csrf_field(); ?>
+                        <input type="hidden" name="action" value="add">
+                        <input type="hidden" name="product_id" value="<?php echo (int)$product_id; ?>">
+                    </form>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -228,9 +237,18 @@ include 'includes/header.php';
                                     <a href="product_details.php?id=<?php echo $rel_id; ?>" class="action-btn" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="<?php echo $rel_wishlist; ?>" class="action-btn" title="Add to Wishlist">
+                                    <?php if ($is_logged_in): ?>
+                                  <form action="customer/wishlist.php" method="POST" class="d-inline">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="action" value="add">
+                                    <input type="hidden" name="product_id" value="<?php echo (int) $rel_id; ?>">
+                                    <button type="submit" class="action-btn border-0" title="Add to Wishlist">" class="action-btn" title="Add to Wishlist">
                                         <i class="fas fa-heart"></i>
-                                    </a>
+                                    </button>
+                                  </form>
+                                  <?php else: ?>
+                                  <a href="login.php" class="action-btn" title="Log in to use wishlist"><i class="fas fa-heart"></i></a>
+                                  <?php endif; ?>
                                 </div>
                             </div>
                             <div class="product-card-body">
@@ -246,9 +264,16 @@ include 'includes/header.php';
                                 <p class="product-desc"><?php echo htmlspecialchars($related['description'] ?? ''); ?></p>
                                 <div class="product-footer">
                                     <span class="price-tag">₱<?php echo number_format($related['price'], 2); ?></span>
-                                    <a href="<?php echo $rel_cart; ?>" class="btn-add-cart-sm text-decoration-none">
-                                        <i class="fas fa-shopping-cart"></i> Add Cart
-                                    </a>
+                                    <?php if ($is_logged_in): ?>
+                                    <form action="customer/cart.php" method="POST" class="d-inline">
+                                        <?php echo csrf_field(); ?>
+                                        <input type="hidden" name="action" value="add">
+                                        <input type="hidden" name="product_id" value="<?php echo (int)$rel_id; ?>">
+                                        <button type="submit" class="btn-add-cart-sm text-decoration-none border-0"><i class="fas fa-shopping-cart"></i> Add Cart</button>
+                                    </form>
+                                <?php else: ?>
+                                    <a href="login.php" class="btn-add-cart-sm text-decoration-none"><i class="fas fa-shopping-cart"></i> Log in to buy</a>
+                                <?php endif; ?>
                                 </div>
                             </div>
                         </div>

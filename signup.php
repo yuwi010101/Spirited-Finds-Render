@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/includes/security.php';
 
 // Include DB configuration
 include 'config/db.php';
@@ -30,21 +30,24 @@ if (isset($_SESSION['user_id'])) {
 $error_msg = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $first_name = trim($_POST['first_name']);
-    $last_name = trim($_POST['last_name']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
-    $password =$_POST['password'];
-    $confirm_password =$_POST['confirm_password'];
+    csrf_verify();
+    $first_name = trim((string) ($_POST['first_name'] ?? ''));
+    $last_name = trim((string) ($_POST['last_name'] ?? ''));
+    $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+    $phone = trim((string) ($_POST['phone'] ?? ''));
+    $password = (string) ($_POST['password'] ?? '');
+    $confirm_password = (string) ($_POST['confirm_password'] ?? '');
 
     // Validations
     if (empty($first_name) || empty($last_name) || empty($email) || empty($password)) {
         $error_msg = "Please fill in all required fields.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($first_name) > 50 || strlen($last_name) > 50) {
+        $error_msg = "Enter a valid email and names under 50 characters.";
     } elseif (!empty($phone) && !preg_match('/^[0-9]{11}$/', $phone)) {
         // Validation para sa eksaktong 11-digit number
         $error_msg = "Phone number must be exactly 11 digits and contain numbers only.";
     } elseif ($password !== $confirm_password) {$error_msg = "Passwords do not match!";
-    } elseif (strlen($password) < 6) {$error_msg = "Password must be at least 6 characters long.";
+    } elseif (strlen($password) < 10) {$error_msg = "Password must be at least 10 characters long.";
     } else {
         // Suriin kung may kaparehong email sa database
         $check_stmt =$conn->prepare("SELECT user_id FROM users WHERE email = ?");
@@ -117,6 +120,7 @@ include 'includes/header.php';
         <?php endif; ?>
 
         <form action="signup.php" method="POST" class="auth-form">
+            <?php echo csrf_field(); ?>
             <!-- First Name and Last Name Row (Ghibli Character Placeholders) -->
             <div class="row">
                 <div class="col-md-6 form-group mb-3">

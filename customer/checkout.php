@@ -1,148 +1,139 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../includes/security.php';
+require_once __DIR__ . '/../config/db.php';
 
-// Ikinonekta pabalik sa root directory base sa Tree Structure
-include '../config/db.php';
-
-// Safe Helper Function para sa Image Paths
 if (!function_exists('get_image_path')) {
     function get_image_path(?string $path) {
-        if (empty($path)) {
-            return '../assets/images/logo.png';
-        }
-        $filename = basename(trim($path));
-        return '../assets/images/' . $filename;
+        return '../assets/images/' . (empty($path) ? 'logo.png' : basename(trim($path)));
     }
 }
-
-// 1. AUTHENTICATION GUARD: Must be logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: ../login.php?redirect=customer/checkout.php");
+if (empty($_SESSION['user_id'])) {
+    header('Location: ../login.php');
     exit();
 }
-
-$user_id = intval($_SESSION['user_id']);
-
-// 2. ROLE GUARD: Only 'customer' role is permitted to checkout
-if (isset($_SESSION['role']) && $_SESSION['role'] !== 'customer') {
-    $_SESSION['error'] = "Admins cannot perform checkout operations.";
-    header("Location: ../index.php");
-    exit();
+if (($_SESSION['role'] ?? '') !== 'customer') {
+    http_response_code(403);
+    exit('Only customer accounts can place orders.');
 }
-
-// Fetch Customer Account Details gamit ang first_name at last_name
-$user_stmt = $conn->prepare("SELECT first_name, last_name, email, phone FROM users WHERE user_id = ?");
-$user_stmt->bind_param("i", $user_id);
+$user_id = (int) $_SESSION['user_id'];
+$user_stmt = $conn->prepare('SELECT first_name, last_name, email, phone FROM users WHERE user_id = ?');
+$user_stmt->bind_param('i', $user_id);
 $user_stmt->execute();
 $user_data = $user_stmt->get_result()->fetch_assoc();
 $user_stmt->close();
-
-// Pagsamahin ang pangalan bilang Full Name
+if (!$user_data) {
+    http_response_code(403);
+    exit('Account no longer exists. Please sign in again.');
+}
 $fullname_display = trim(($user_data['first_name'] ?? '') . ' ' . ($user_data['last_name'] ?? ''));
-
-// 3. FETCH CART PRODUCTS DIRECTLY FROM DATABASE TABLE 'cart'
-$cart_products = [];
-$total_amount = 0;
-
-$stmt = $conn->prepare("
-    SELECT c.quantity, c.product_id, p.title, p.price, p.image, p.stock 
-    FROM cart c 
-    JOIN products p ON c.product_id = p.product_id 
-    WHERE c.user_id = ?
-");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-
-while ($row = $result->fetch_assoc()) {
-    $qty = intval($row['quantity']);
-    $subtotal = $row['price'] * $qty;
-    $total_amount += $subtotal;
-
-    $cart_products[] = [
-        'product_id' => $row['product_id'],
-        'title'      => $row['title'] ?? 'Untitled Product',
-        'image'      => get_image_path($row['image']),
-        'price'      => $row['price'],
-        'quantity'   => $qty,
-        'subtotal'   => $subtotal
-    ];
-}
-$stmt->close();
-
-// 4. CART GUARD: Kung walang laman ang Cart sa Database, ibalik sa cart.php
-if (empty($cart_products)) {
-    header("Location: cart.php");
-    exit();
-}
-
-$shipping_fee = 100.00; // Fixed shipping rate
-$grand_total = $total_amount + $shipping_fee;
-
+$shipping_fee = 100.00;
 $error_msg = '';
 
-// PLACE ORDER PROCESSOR
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
-    $fullname = trim($_POST['fullname'] ?? '');
-    $phone    = trim($_POST['phone'] ?? '');
-    $address  = trim($_POST['address'] ?? '');
-    $payment  = trim($_POST['payment_method'] ?? 'COD');
+    csrf_verify();
+    $fullname = trim((string) ($_POST['fullname'] ?? ''));
+    $phone = trim((string) ($_POST['phone'] ?? ''));
+    $address = trim((string) ($_POST['address'] ?? ''));
+    $payment = (string) ($_POST['payment_method'] ?? '');
 
-    if (empty($fullname) || empty($phone) || empty($address)) {
-        $error_msg = "Please fill in all required shipping fields.";
+    if (strlen($fullname) < 2 || strlen($fullname) > 150 ||
+        !preg_match('/^[0-9+() -]{7,20}$/', $phone) ||
+        strlen($address) < 10 || strlen($address) > 1000) {
+        $error_msg = 'Enter a valid recipient name, contact number and complete delivery address.';
+    } elseif ($payment !== 'COD') {
+        $error_msg = 'Only Cash on Delivery is available. No online payment gateway is connected.';
     } else {
-        // Database Transaction for Safe Order Creation
         $conn->begin_transaction();
-
         try {
-            // 1. Insert into 'orders' table
-            $order_stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, status) VALUES (?, ?, 'Pending')");
-            $order_stmt->bind_param("id", $user_id, $grand_total);
-            $order_stmt->execute();
+            // Recalculate the cart and lock inventory rows; never trust stale HTML totals.
+            $select = $conn->prepare('SELECT c.product_id, c.quantity, p.price, p.stock FROM cart c JOIN products p ON p.product_id = c.product_id WHERE c.user_id = ? ORDER BY c.product_id FOR UPDATE');
+            $select->bind_param('i', $user_id);
+            $select->execute();
+            $lockedItems = $select->get_result()->fetch_all(MYSQLI_ASSOC);
+            $select->close();
+            if (!$lockedItems) {
+                throw new DomainException('Your cart is empty. Please add a product first.');
+            }
+
+            $freshTotal = 0.0;
+            foreach ($lockedItems as $item) {
+                $qty = (int) $item['quantity'];
+                $stock = (int) $item['stock'];
+                if ($qty < 1 || $qty > 10 || $qty > $stock) {
+                    throw new DomainException('An item is out of stock or has an invalid quantity. Please update your cart.');
+                }
+                $freshTotal += ((float) $item['price']) * $qty;
+            }
+            $freshTotal = round($freshTotal, 2);
+            $grandTotal = round($freshTotal + $shipping_fee, 2);
+
+            $orderStmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, status, recipient_name, contact_phone, delivery_address, payment_method, shipping_fee) VALUES (?, ?, 'Pending', ?, ?, ?, 'COD', ?)");
+            $orderStmt->bind_param('idsssd', $user_id, $grandTotal, $fullname, $phone, $address, $shipping_fee);
+            $orderStmt->execute();
             $order_id = $conn->insert_id;
-            $order_stmt->close();
+            $orderStmt->close();
 
-            // 2. Insert items & Update Stock in 'products' table
-            $item_stmt = $conn->prepare("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)");
-            $stock_stmt = $conn->prepare("UPDATE products SET stock = GREATEST(0, stock - ?) WHERE product_id = ?");
-
-            foreach ($cart_products as $item) {
-                // Save Order Item
-                $item_stmt->bind_param("iiid", $order_id, $item['product_id'], $item['quantity'], $item['price']);
-                $item_stmt->execute();
-
-                // Deduct Inventory Stock
-                $stock_stmt->bind_param("ii", $item['quantity'], $item['product_id']);
-                $stock_stmt->execute();
+            $stockStmt = $conn->prepare('UPDATE products SET stock = stock - ? WHERE product_id = ? AND stock >= ?');
+            $itemStmt = $conn->prepare('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)');
+            foreach ($lockedItems as $item) {
+                $pid = (int) $item['product_id'];
+                $qty = (int) $item['quantity'];
+                $price = (float) $item['price'];
+                $stockStmt->bind_param('iii', $qty, $pid, $qty);
+                $stockStmt->execute();
+                if ($stockStmt->affected_rows !== 1) {
+                    throw new DomainException('Stock changed while placing the order. Please review your cart.');
+                }
+                $itemStmt->bind_param('iiid', $order_id, $pid, $qty, $price);
+                $itemStmt->execute();
             }
-            $item_stmt->close();
-            $stock_stmt->close();
-
-            // 3. Clear DB Cart Table for this user
-            $clear_cart = $conn->prepare("DELETE FROM cart WHERE user_id = ?");
-            if ($clear_cart) {
-                $clear_cart->bind_param("i", $user_id);
-                $clear_cart->execute();
-                $clear_cart->close();
-            }
-
-            // Commit Transaction
+            $stockStmt->close();
+            $itemStmt->close();
+            $clear = $conn->prepare('DELETE FROM cart WHERE user_id = ?');
+            $clear->bind_param('i', $user_id);
+            $clear->execute();
+            $clear->close();
             $conn->commit();
 
-            // Redirect to Success / Confirmation Page
-            header("Location: order_success.php?order_id=" . $order_id);
+            $_SESSION['last_order_id'] = $order_id;
+            header('Location: order_success.php?order_id=' . $order_id, true, 303);
             exit();
-
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $conn->rollback();
-            $error_msg = "An error occurred while placing your order. Please try again.";
+            error_log('Checkout failed: ' . $e->getMessage());
+            $error_msg = $e instanceof DomainException ? $e->getMessage() :
+                'Unable to place your order right now. Please try again or contact the shop.';
         }
     }
 }
 
-// Include Header
+$cart_products = [];
+$total_amount = 0.0;
+$cartStmt = $conn->prepare('SELECT c.quantity, c.product_id, p.title, p.price, p.image, p.stock FROM cart c JOIN products p ON p.product_id = c.product_id WHERE c.user_id = ? ORDER BY c.cart_id');
+$cartStmt->bind_param('i', $user_id);
+$cartStmt->execute();
+$res = $cartStmt->get_result();
+while ($row = $res->fetch_assoc()) {
+    $qty = (int) $row['quantity'];
+    $subtotal = (float) $row['price'] * $qty;
+    $total_amount += $subtotal;
+    $cart_products[] = [
+        'product_id' => (int) $row['product_id'],
+        'title' => $row['title'],
+        'image' => get_image_path($row['image']),
+        'price' => (float) $row['price'],
+        'stock' => (int) $row['stock'],
+        'quantity' => $qty,
+        'subtotal' => $subtotal,
+    ];
+}
+$cartStmt->close();
+if (!$cart_products) {
+    $_SESSION['cart_notice'] = 'Your cart is empty.';
+    header('Location: cart.php');
+    exit();
+}
+$grand_total = $total_amount + $shipping_fee;
 include '../includes/header.php';
 ?>
 
@@ -162,6 +153,7 @@ include '../includes/header.php';
     <?php endif; ?>
 
     <form action="checkout.php" method="POST">
+        <?php echo csrf_field(); ?>
         <div class="row">
             <!-- LEFT COLUMN: SHIPPING & PAYMENT INFORMATION -->
             <div class="col-lg-7 mb-4">
@@ -196,29 +188,10 @@ include '../includes/header.php';
                 <div class="card shadow-sm border-0 rounded-lg p-4">
                     <h4 class="font-weight-bold mb-3"><i class="fas fa-wallet text-warning mr-2"></i> Payment Method</h4>
                     <hr>
-
                     <div class="custom-control custom-radio mb-3">
-                        <input class="custom-control-input" type="radio" name="payment_method" id="payment_cod" value="COD" checked>
-                        <label class="custom-control-label font-weight-bold" for="payment_cod">
-                            Cash on Delivery (COD)
-                        </label>
-                        <div class="text-muted small">Pay with cash upon arrival of your package.</div>
-                    </div>
-
-                    <div class="custom-control custom-radio mb-3">
-                        <input class="custom-control-input" type="radio" name="payment_method" id="payment_gcash" value="GCash">
-                        <label class="custom-control-label font-weight-bold" for="payment_gcash">
-                            GCash / E-Wallet
-                        </label>
-                        <div class="text-muted small">Scan QR code or send payment directly upon order placement.</div>
-                    </div>
-
-                    <div class="custom-control custom-radio">
-                        <input class="custom-control-input" type="radio" name="payment_method" id="payment_card" value="Card">
-                        <label class="custom-control-label font-weight-bold" for="payment_card">
-                            Credit / Debit Card
-                        </label>
-                        <div class="text-muted small">Secure online payment via card gateway.</div>
+                        <input class="custom-control-input" type="radio" name="payment_method" id="payment_cod" value="COD" checked required>
+                        <label class="custom-control-label font-weight-bold" for="payment_cod">Cash on Delivery (COD)</label>
+                        <div class="text-muted small">Pay in cash when your order arrives. Online payment is not yet available.</div>
                     </div>
                 </div>
             </div>
@@ -266,7 +239,7 @@ include '../includes/header.php';
                         <strong class="h5 font-weight-bold text-success mb-0">₱<?php echo number_format($grand_total, 2); ?></strong>
                     </div>
 
-                    <button type="submit" name="place_order" class="btn btn-ghibli-primary w-100 py-3 font-weight-bold h5 mb-0">
+                    <button type="submit" name="place_order" value="1" class="btn btn-ghibli-primary w-100 py-3 font-weight-bold h5 mb-0">
                         Place Order Now
                     </button>
                     <a href="cart.php" class="btn btn-link w-100 mt-2 text-decoration-none text-muted">Return to Cart</a>

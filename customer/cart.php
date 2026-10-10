@@ -1,7 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../includes/security.php';
 
 // Ikinonekta ang DB Config base sa Tree Structure (customer/cart.php)
 include '../config/db.php';
@@ -32,9 +30,22 @@ if ($is_logged_in && $user_role === 'admin') {
 $max_item_limit = 10;
 
 if ($is_logged_in) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        csrf_verify();
+    }
     // ACTION HANDLER: Magdagdag ng Item sa Database Cart (GET action=add)
-    if (isset($_GET['action']) && $_GET['action'] === 'add' && isset($_GET['id'])) {
-        $product_id = intval($_GET['id']);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add') {
+        $product_id = (int) ($_POST['product_id'] ?? 0);
+        $stockQuery = $conn->prepare('SELECT stock FROM products WHERE product_id = ?');
+        $stockQuery->bind_param('i', $product_id);
+        $stockQuery->execute();
+        $stockRow = $stockQuery->get_result()->fetch_assoc();
+        $stockQuery->close();
+        if (!$stockRow || (int) $stockRow['stock'] <= 0) {
+            $_SESSION['cart_notice'] = 'Sorry, this product is out of stock.';
+            header('Location: cart.php', true, 303);
+            exit();
+        }
         
         $chk = $conn->prepare("SELECT quantity FROM cart WHERE user_id = ? AND product_id = ?");
         $chk->bind_param("ii", $user_id, $product_id);
@@ -43,7 +54,7 @@ if ($is_logged_in) {
         
         if ($chk_res && $chk_res->num_rows > 0) {
             $row = $chk_res->fetch_assoc();
-            $new_qty = min($row['quantity'] + 1, $max_item_limit);
+            $new_qty = min((int) $row['quantity'] + 1, $max_item_limit, (int) $stockRow['stock']);
             $upd = $conn->prepare("UPDATE cart SET quantity = ? WHERE user_id = ? AND product_id = ?");
             $upd->bind_param("iii", $new_qty, $user_id, $product_id);
             $upd->execute();
@@ -61,13 +72,21 @@ if ($is_logged_in) {
     }
 
     // ACTION HANDLER: Baguhin ang Dami / Quantity (POST)
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update') {
         $product_id = intval($_POST['product_id']);
-        $quantity = intval($_POST['quantity']);
+        $quantity = (int) ($_POST['quantity'] ?? 0);
 
         if ($quantity > 0) {
-            if ($quantity > $max_item_limit) {
-                $quantity = $max_item_limit;
+            $available = $conn->prepare('SELECT stock FROM products WHERE product_id = ?');
+            $available->bind_param('i', $product_id);
+            $available->execute();
+            $found = $available->get_result()->fetch_assoc();
+            $available->close();
+            $quantity = min($quantity, $max_item_limit, (int) ($found['stock'] ?? 0));
+            if ($quantity <= 0) {
+                $_SESSION['cart_notice'] = 'Product is no longer in stock. Remove it from your cart.';
+                header('Location: cart.php', true, 303);
+                exit();
             }
             $upd = $conn->prepare("UPDATE cart SET quantity = ? WHERE user_id = ? AND product_id = ?");
             $upd->bind_param("iii", $quantity, $user_id, $product_id);
@@ -84,8 +103,8 @@ if ($is_logged_in) {
     }
 
     // ACTION HANDLER: Alisin ang Item sa Database Cart (GET action=remove)
-    if (isset($_GET['action']) && $_GET['action'] === 'remove' && isset($_GET['id'])) {
-        $remove_id = intval($_GET['id']);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'remove') {
+        $remove_id = (int) ($_POST['product_id'] ?? 0);
         $del = $conn->prepare("DELETE FROM cart WHERE user_id = ? AND product_id = ?");
         $del->bind_param("ii", $user_id, $remove_id);
         $del->execute();
@@ -200,6 +219,7 @@ include '../includes/header.php';
                                             <td class="text-nowrap">₱<?php echo number_format($item['price'], 2); ?></td>
                                             <td>
                                                 <form action="cart.php" method="POST" class="d-flex align-items-center qty-form">
+                                                    <?php echo csrf_field(); ?>
                                                     <input type="hidden" name="action" value="update">
                                                     <input type="hidden" name="product_id" value="<?php echo $item['product_id']; ?>">
                                                     <input type="number" 
@@ -215,14 +235,14 @@ include '../includes/header.php';
                                                 ₱<?php echo number_format($item['subtotal'], 2); ?>
                                             </td>
                                             <td class="text-center">
-                                                <a href="cart.php?action=remove&id=<?php echo $item['product_id']; ?>" 
-                                                   class="btn btn-sm btn-cart-delete" 
-                                                   title="Remove item"
-                                                   onclick="return confirm('Are you sure you want to remove this item from your cart?');">
-                                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                                    </svg>
-                                                </a>
+                                                <form action="cart.php" method="POST" onsubmit="return confirm('Remove this item from your cart?');">
+                                                        <?php echo csrf_field(); ?>
+                                                        <input type="hidden" name="action" value="remove">
+                                                        <input type="hidden" name="product_id" value="<?php echo (int)$item['product_id']; ?>">
+                                                        <button type="submit" class="btn btn-sm btn-cart-delete" aria-label="Remove item">
+                                                            <i class="fa-solid fa-trash"></i>
+                                                        </button>
+                                                    </form>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>

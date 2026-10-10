@@ -1,7 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../includes/security.php';
 
 // Ikinonekta pabalik sa root directory base sa Tree Structure
 include '../config/db.php';
@@ -22,82 +20,83 @@ $is_logged_in = isset($_SESSION['user_id']);
 $user_id = $is_logged_in ? intval($_SESSION['user_id']) : 0;
 $max_item_limit = 10;
 
-if ($is_logged_in) {
-    // ACTION HANDLER: Magdagdag ng Item sa Wishlist (GET action=add)
-    if (isset($_GET['action']) && $_GET['action'] === 'add' && isset($_GET['id'])) {
-        $product_id = intval($_GET['id']);
-        
-        // Suriin kung umiiral na sa wishlist ng user
-        $chk = $conn->prepare("SELECT wishlist_id FROM wishlist WHERE user_id = ? AND product_id = ?");
-        $chk->bind_param("ii", $user_id, $product_id);
-        $chk->execute();
-        $chk_res = $chk->get_result();
-        
-        if ($chk_res->num_rows === 0) {
-            $ins = $conn->prepare("INSERT INTO wishlist (user_id, product_id) VALUES (?, ?)");
-            $ins->bind_param("ii", $user_id, $product_id);
-            $ins->execute();
-            $ins->close();
-        }
-        $chk->close();
-
-        header("Location: wishlist.php");
-        exit();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_verify();
+    if (!$is_logged_in || ($_SESSION['role'] ?? '') !== 'customer') {
+        http_response_code(403);
+        exit('Customer sign-in required.');
     }
-
-    // ACTION HANDLER: Burahin ang Item sa Wishlist (GET action=remove)
-    if (isset($_GET['action']) && $_GET['action'] === 'remove' && isset($_GET['id'])) {
-        $product_id = intval($_GET['id']);
-        $del = $conn->prepare("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?");
-        $del->bind_param("ii", $user_id, $product_id);
-        $del->execute();
-        $del->close();
-
-        header("Location: wishlist.php");
-        exit();
+    $action = (string) ($_POST['action'] ?? '');
+    $product_id = filter_var($_POST['product_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($product_id === false || !in_array($action, ['add', 'remove', 'move_to_cart'], true)) {
+        http_response_code(400);
+        exit('Invalid wishlist action.');
     }
-
-    // ACTION HANDLER: Ilipat ang Item sa Cart mula sa Wishlist (GET action=move_to_cart)
-    if (isset($_GET['action']) && $_GET['action'] === 'move_to_cart' && isset($_GET['id'])) {
-        $product_id = intval($_GET['id']);
-
-        // 1. I-update ang Database Cart
-        $chk_cart = $conn->prepare("SELECT quantity FROM cart WHERE user_id = ? AND product_id = ?");
-        $chk_cart->bind_param("ii", $user_id, $product_id);
-        $chk_cart->execute();
-        $cart_res = $chk_cart->get_result();
-
-        if ($cart_res && $cart_res->num_rows > 0) {
-            $c_row = $cart_res->fetch_assoc();
-            $new_qty = min($c_row['quantity'] + 1, $max_item_limit);
-            $upd = $conn->prepare("UPDATE cart SET quantity = ? WHERE user_id = ? AND product_id = ?");
-            $upd->bind_param("iii", $new_qty, $user_id, $product_id);
-            $upd->execute();
-            $upd->close();
+    $conn->begin_transaction();
+    try {
+        if ($action === 'remove') {
+            $query = $conn->prepare('DELETE FROM wishlist WHERE user_id = ? AND product_id = ?');
+            $query->bind_param('ii', $user_id, $product_id);
+            $query->execute();
+            $query->close();
         } else {
-            $ins_cart = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)");
-            $ins_cart->bind_param("ii", $user_id, $product_id);
-            $ins_cart->execute();
-            $ins_cart->close();
-            $new_qty = 1;
+            $stockQuery = $conn->prepare('SELECT stock FROM products WHERE product_id = ? FOR UPDATE');
+            $stockQuery->bind_param('i', $product_id);
+            $stockQuery->execute();
+            $product = $stockQuery->get_result()->fetch_assoc();
+            $stockQuery->close();
+            if (!$product) throw new DomainException('Product is no longer available.');
+            if ($action === 'add') {
+                $exists = $conn->prepare('SELECT 1 FROM wishlist WHERE user_id = ? AND product_id = ?');
+                $exists->bind_param('ii', $user_id, $product_id);
+                $exists->execute();
+                $found = (bool) $exists->get_result()->fetch_row();
+                $exists->close();
+                if (!$found) {
+                    $save = $conn->prepare('INSERT INTO wishlist (user_id, product_id) VALUES (?, ?)');
+                    $save->bind_param('ii', $user_id, $product_id);
+                    $save->execute();
+                    $save->close();
+                }
+            } else {
+                if ((int) $product['stock'] < 1) {
+                    throw new DomainException('Product is currently out of stock.');
+                }
+                $cartCheck = $conn->prepare('SELECT quantity FROM cart WHERE user_id = ? AND product_id = ? FOR UPDATE');
+                $cartCheck->bind_param('ii', $user_id, $product_id);
+                $cartCheck->execute();
+                $inCart = $cartCheck->get_result()->fetch_assoc();
+                $cartCheck->close();
+                if ($inCart) {
+                    $quantity = (int) $inCart['quantity'] + 1;
+                    if ($quantity > 10 || $quantity > (int) $product['stock']) {
+                        throw new DomainException('Maximum cart quantity or stock reached.');
+                    }
+                    $update = $conn->prepare('UPDATE cart SET quantity = ? WHERE user_id = ? AND product_id = ?');
+                    $update->bind_param('iii', $quantity, $user_id, $product_id);
+                    $update->execute();
+                    $update->close();
+                } else {
+                    $insert = $conn->prepare('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, 1)');
+                    $insert->bind_param('ii', $user_id, $product_id);
+                    $insert->execute();
+                    $insert->close();
+                }
+                $delete = $conn->prepare('DELETE FROM wishlist WHERE user_id = ? AND product_id = ?');
+                $delete->bind_param('ii', $user_id, $product_id);
+                $delete->execute();
+                $delete->close();
+            }
         }
-        $chk_cart->close();
-
-        // 2. I-update din ang Session Cart para manatiling synchronized
-        if (!isset($_SESSION['cart'])) {
-            $_SESSION['cart'] = [];
-        }
-        $_SESSION['cart'][$product_id] = isset($_SESSION['cart'][$product_id]) 
-            ? min($_SESSION['cart'][$product_id] + 1, $max_item_limit) 
-            : 1;
-
-        // 3. Alisin sa Wishlist matapos maipaloob sa Cart
-        $del_w = $conn->prepare("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?");
-        $del_w->bind_param("ii", $user_id, $product_id);
-        $del_w->execute();
-        $del_w->close();
-
-        header("Location: cart.php");
+        $conn->commit();
+        $_SESSION['wishlist_flash'] = ($action === 'move_to_cart') ? 'Item moved to cart.' : 'Wishlist updated.';
+        header('Location: ' . ($action === 'move_to_cart' ? 'cart.php' : 'wishlist.php'), true, 303);
+        exit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        error_log('Wishlist action failed: ' . $e->getMessage());
+        $_SESSION['wishlist_flash'] = $e instanceof DomainException ? $e->getMessage() : 'Unable to update wishlist.';
+        header('Location: wishlist.php', true, 303);
         exit();
     }
 }
@@ -135,6 +134,9 @@ if ($is_logged_in) {
 include '../includes/header.php';
 ?>
 
+<?php if (isset($_SESSION['wishlist_flash'])): ?>
+<div class="container mt-3"><div class="alert alert-info"><?php echo esc($_SESSION['wishlist_flash']); unset($_SESSION['wishlist_flash']); ?></div></div>
+<?php endif; ?>
 <!-- CUSTOMER STYLE LINK -->
 <link rel="stylesheet" href="../assets/global/customer-style.css">
 
@@ -162,13 +164,12 @@ include '../includes/header.php';
                 <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
                     <div class="card cart-table-card h-100 position-relative p-2">
                         <!-- Remove Button Overlay -->
-                        <a href="wishlist.php?action=remove&id=<?php echo $item['product_id']; ?>" 
-                           class="btn btn-cart-delete position-absolute" 
-                           style="top: 15px; right: 15px; z-index: 10; width: 32px; height: 32px; border-radius: 50%; padding: 0;" 
-                           title="Remove from wishlist"
-                           onclick="return confirm('Remove this item from your wishlist?');">
-                            <i class="fas fa-times"></i>
-                        </a>
+                        <form method="POST" action="wishlist.php" class="position-absolute" style="top:15px;right:15px;z-index:10;" onsubmit="return confirm('Remove this item from your wishlist?');">
+                            <?php echo csrf_field(); ?>
+                            <input type="hidden" name="action" value="remove">
+                            <input type="hidden" name="product_id" value="<?php echo (int)$item['product_id']; ?>">
+                            <button type="submit" class="btn btn-cart-delete" aria-label="Remove from wishlist"><i class="fas fa-times"></i></button>
+                         </form>
 
                         <!-- Product Image -->
                         <div class="text-center p-3 rounded" style="background-color: var(--ghibli-warm-paper, #F5EFE0);">
@@ -205,10 +206,12 @@ include '../includes/header.php';
                             <!-- Action Buttons -->
                             <div>
                                 <?php if ($item['stock'] > 0): ?>
-                                    <a href="wishlist.php?action=move_to_cart&id=<?php echo $item['product_id']; ?>" 
-                                       class="btn btn-ghibli-primary btn-block btn-sm py-2 font-weight-bold">
-                                        <i class="fas fa-shopping-cart mr-1"></i> Move to Cart
-                                    </a>
+                                    <form method="POST" action="wishlist.php">
+                                        <?php echo csrf_field(); ?>
+                                        <input type="hidden" name="action" value="move_to_cart">
+                                        <input type="hidden" name="product_id" value="<?php echo (int)$item['product_id']; ?>">
+                                        <button type="submit" class="btn btn-ghibli-primary btn-block btn-sm py-2 font-weight-bold"><i class="fas fa-shopping-cart mr-1"></i> Move to Cart</button>
+                                     </form>
                                 <?php else: ?>
                                     <button class="btn btn-secondary btn-block btn-sm py-2" disabled style="border-radius: var(--radius-pill, 50px);">
                                         Out of Stock

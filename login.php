@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/includes/security.php';
 
 // Include DB configuration
 include 'config/db.php';
@@ -39,10 +39,11 @@ if (isset($_GET['signup']) && $_GET['signup'] === 'success') {
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = trim($_POST['email']);
-    $password = trim($_POST['password']);
+    csrf_verify();
+    $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+    $password = (string) ($_POST['password'] ?? '');
 
-    if (!empty($email) && !empty($password)) {
+    if (filter_var($email, FILTER_VALIDATE_EMAIL) && $password !== '') {
         $stmt = $conn->prepare("SELECT user_id, first_name, last_name, email, password, role FROM users WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -52,7 +53,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $user = $result->fetch_assoc();
             
             // Verifies hashed password or fallback plain text
-            if (password_verify($password, $user['password']) || $password === $user['password']) {
+            if (password_verify($password, $user['password'])) {
+                session_regenerate_id(true);
                 $_SESSION['user_id'] = $user['user_id'];
                 $_SESSION['first_name'] = $user['first_name'];
                 $_SESSION['last_name'] = $user['last_name'];
@@ -66,10 +68,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
                 exit();
             } else {
-                $error_msg = "Incorrect password. Please try again.";
+                $error_msg = "Invalid email or password.";
             }
         } else {
-            $error_msg = "No account is registered with this email address.";
+            $error_msg = "Invalid email or password.";
         }
         $stmt->close();
     } else {
@@ -133,6 +135,7 @@ include 'includes/header.php';
 
         <!-- Form Elements -->
         <form action="login.php" method="POST" class="auth-form">
+            <?php echo csrf_field(); ?>
             <div class="form-group mb-3">
                 <label for="email" class="form-label">Email Address</label>
                 <div class="auth-input-group">

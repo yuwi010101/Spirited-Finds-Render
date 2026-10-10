@@ -1,7 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../includes/security.php';
 
 // Ikinonekta base sa Tree Structure (my_orders.php ay nasa customer/ folder)
 include '../config/db.php';
@@ -27,6 +25,121 @@ $user_role = $_SESSION['role'] ?? '';
 if ($is_logged_in && $user_role === 'admin') {
     header("Location: ../admin/orders.php");
     exit();
+}
+
+
+/**
+ * Both buttons use POST+CSRF and verify ownership against the database.
+ * Only Pending orders can be cancelled; all changes are atomic.
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_logged_in) {
+    csrf_verify();
+    $action = (string) ($_POST['action'] ?? '');
+    $requestedOrder = filter_var($_POST['order_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($requestedOrder === false || !in_array($action, ['cancel_order', 'order_again'], true)) {
+        $_SESSION['order_flash'] = 'Invalid order action.';
+        $_SESSION['order_flash_type'] = 'danger';
+        header('Location: my_orders.php', true, 303);
+        exit();
+    }
+    $conn->begin_transaction();
+    try {
+        $lookup = $conn->prepare('SELECT status FROM orders WHERE order_id = ? AND user_id = ? FOR UPDATE');
+        $lookup->bind_param('ii', $requestedOrder, $user_id);
+        $lookup->execute();
+        $originalOrder = $lookup->get_result()->fetch_assoc();
+        $lookup->close();
+        if (!$originalOrder) {
+            throw new DomainException('The selected order was not found in your account.');
+        }
+        if ($action === 'cancel_order') {
+            if ($originalOrder['status'] !== 'Pending') {
+                throw new DomainException('This order is already being processed or has been finalized, so it can no longer be cancelled.');
+            }
+            $cancel = $conn->prepare("UPDATE orders SET status = 'Cancelled' WHERE order_id = ? AND user_id = ? AND status = 'Pending'");
+            $cancel->bind_param('ii', $requestedOrder, $user_id);
+            $cancel->execute();
+            $cancelled = $cancel->affected_rows === 1;
+            $cancel->close();
+            if (!$cancelled) {
+                throw new DomainException('This order is no longer eligible for cancellation.');
+            }
+            $items = $conn->prepare('SELECT product_id, quantity FROM order_items WHERE order_id = ?');
+            $items->bind_param('i', $requestedOrder);
+            $items->execute();
+            $result = $items->get_result();
+            $restock = $conn->prepare('UPDATE products SET stock = stock + ? WHERE product_id = ?');
+            while ($item = $result->fetch_assoc()) {
+                $qty = (int) $item['quantity'];
+                $product = (int) $item['product_id'];
+                $restock->bind_param('ii', $qty, $product);
+                $restock->execute();
+            }
+            $restock->close();
+            $items->close();
+            $notice = 'Order #' . $requestedOrder . ' has been cancelled and its items returned to stock.';
+            $redirect = 'my_orders.php';
+        } else {
+            if ($originalOrder['status'] !== 'Completed') {
+                throw new DomainException('Only completed orders can be ordered again.');
+            }
+            // This adds to the current cart, but creates NO new order or charge.
+            $items = $conn->prepare('SELECT oi.product_id, oi.quantity, p.stock FROM order_items oi JOIN products p ON p.product_id = oi.product_id WHERE oi.order_id = ? ORDER BY oi.product_id FOR UPDATE');
+            $items->bind_param('i', $requestedOrder);
+            $items->execute();
+            $oldItems = $items->get_result()->fetch_all(MYSQLI_ASSOC);
+            $items->close();
+            if (!$oldItems) {
+                throw new DomainException('No available products were found in this completed order.');
+            }
+            foreach ($oldItems as $item) {
+                $pid = (int) $item['product_id'];
+                $qty = (int) $item['quantity'];
+                $stock = (int) $item['stock'];
+                if ($qty <= 0 || $qty > 10 || $qty > $stock) {
+                    throw new DomainException('Some products have insufficient stock or exceed the 10-item limit. Please shop for available items instead.');
+                }
+                $existing = $conn->prepare('SELECT quantity FROM cart WHERE user_id = ? AND product_id = ? FOR UPDATE');
+                $existing->bind_param('ii', $user_id, $pid);
+                $existing->execute();
+                $cartRow = $existing->get_result()->fetch_assoc();
+                $existing->close();
+                if ($cartRow) {
+                    $newQty = (int) $cartRow['quantity'] + $qty;
+                    if ($newQty > 10 || $newQty > $stock) {
+                        throw new DomainException('Your cart already contains some of these products. Adjust quantities before reordering.');
+                    }
+                    $update = $conn->prepare('UPDATE cart SET quantity = ? WHERE user_id = ? AND product_id = ?');
+                    $update->bind_param('iii', $newQty, $user_id, $pid);
+                    $update->execute();
+                    $update->close();
+                } else {
+                    $insert = $conn->prepare('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)');
+                    $insert->bind_param('iii', $user_id, $pid, $qty);
+                    $insert->execute();
+                    $insert->close();
+                }
+            }
+            $notice = 'Items from Order #' . $requestedOrder . ' have been added to your cart. Please confirm current prices and delivery information before checking out.';
+            $redirect = 'cart.php';
+        }
+        $conn->commit();
+        $_SESSION['order_flash'] = $notice;
+        $_SESSION['order_flash_type'] = 'success';
+        if ($redirect === 'cart.php') {
+            $_SESSION['cart_notice'] = $notice;
+        }
+        header('Location: ' . $redirect, true, 303);
+        exit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        error_log('Customer order action failed: ' . $e->getMessage());
+        $_SESSION['order_flash'] = $e instanceof DomainException ? $e->getMessage() :
+            'Unable to update this order. Please try again later.';
+        $_SESSION['order_flash_type'] = 'danger';
+        header('Location: my_orders.php', true, 303);
+        exit();
+    }
 }
 
 $orders = [];
@@ -83,6 +196,12 @@ include '../includes/header.php';
 
 <div class="container cart-page-wrapper" style="min-height: 60vh;">
     <h2 class="cart-title mb-4"><i class="fas fa-box text-ghibli-accent mr-2"></i> My Orders</h2>
+    <?php if (isset($_SESSION['order_flash'])): ?>
+        <div class="alert alert-<?php echo ($_SESSION['order_flash_type'] ?? '') === 'success' ? 'success' : 'danger'; ?> mb-4" role="alert">
+            <?php echo esc($_SESSION['order_flash']); ?>
+        </div>
+        <?php unset($_SESSION['order_flash'], $_SESSION['order_flash_type']); ?>
+    <?php endif; ?>
 
     <?php if (!$is_logged_in): ?>
         <!-- GUEST STATE: KAILANGAN MAG-LOGIN -->
@@ -153,6 +272,30 @@ include '../includes/header.php';
                             </ul>
                         </div>
 
+                        <!-- Customer order actions -->
+                        <?php if ($order['status'] === 'Pending'): ?>
+                            <div class="px-3 pt-3 bg-white d-flex justify-content-end">
+                                <form action="my_orders.php" method="POST" onsubmit="return confirm('Cancel this pending order? This action cannot be undone.');">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="action" value="cancel_order">
+                                    <input type="hidden" name="order_id" value="<?php echo (int)$order['order_id']; ?>">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm font-weight-bold">
+                                        <i class="fas fa-times-circle mr-1"></i> Cancel Order
+                                    </button>
+                                </form>
+                            </div>
+                        <?php elseif ($order['status'] === 'Completed'): ?>
+                            <div class="px-3 pt-3 bg-white d-flex justify-content-end">
+                                <form action="my_orders.php" method="POST">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="action" value="order_again">
+                                    <input type="hidden" name="order_id" value="<?php echo (int)$order['order_id']; ?>">
+                                    <button type="submit" class="btn btn-ghibli-primary btn-sm font-weight-bold">
+                                        <i class="fas fa-shopping-bag mr-1"></i> Order Again
+                                    </button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
                         <!-- ORDER FOOTER -->
                         <div class="card-footer bg-white text-right py-3 border-top-0 d-flex justify-content-between align-items-center">
                             <span class="text-muted small"><i class="fas fa-shipping-fast text-success mr-1"></i> Standard Shipping Included</span>

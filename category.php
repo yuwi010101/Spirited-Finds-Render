@@ -164,9 +164,18 @@ include 'includes/header.php';
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     <!-- HEART BUTTON: Add to Wishlist or Redirect to Login -->
-                                    <a href="<?php echo $wishlist_link; ?>" class="action-btn" title="Add to Wishlist">
+                                    <?php if ($is_logged_in): ?>
+                                  <form action="customer/wishlist.php" method="POST" class="d-inline">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="action" value="add">
+                                    <input type="hidden" name="product_id" value="<?php echo (int) $pid; ?>">
+                                    <button type="submit" class="action-btn border-0" title="Add to Wishlist">" class="action-btn" title="Add to Wishlist">
                                         <i class="fas fa-heart"></i>
-                                    </a>
+                                    </button>
+                                  </form>
+                                  <?php else: ?>
+                                  <a href="login.php" class="action-btn" title="Log in to use wishlist"><i class="fas fa-heart"></i></a>
+                                  <?php endif; ?>
                                 </div>
 
                                 <!-- Product Image with Fallback -->
@@ -195,9 +204,16 @@ include 'includes/header.php';
                                 <div class="product-footer">
                                     <span class="price-tag">₱<?php echo number_format($row['price'], 2); ?></span>
                                     <!-- ADD TO CART BUTTON: Adds to Cart or Redirects to Login -->
-                                    <a href="<?php echo $cart_link; ?>" class="btn-add-cart-sm text-decoration-none">
-                                        <i class="fas fa-shopping-cart"></i> Add Cart
-                                    </a>
+                                    <?php if ($is_logged_in): ?>
+                                    <form action="customer/cart.php" method="POST" class="d-inline">
+                                        <?php echo csrf_field(); ?>
+                                        <input type="hidden" name="action" value="add">
+                                        <input type="hidden" name="product_id" value="<?php echo (int)$pid; ?>">
+                                        <button type="submit" class="btn-add-cart-sm text-decoration-none border-0"><i class="fas fa-shopping-cart"></i> Add Cart</button>
+                                    </form>
+                                <?php else: ?>
+                                    <a href="login.php" class="btn-add-cart-sm text-decoration-none"><i class="fas fa-shopping-cart"></i> Log in to buy</a>
+                                <?php endif; ?>
                                 </div>
                             </div>
 

@@ -6,7 +6,7 @@ RUN docker-php-ext-install mysqli pdo_mysql  && a2enmod rewrite headers  && sed 
 WORKDIR /var/www/html
 COPY . /var/www/html/
 COPY .render/apache-security.conf /etc/apache2/conf-available/spirited-security.conf
-RUN a2enconf spirited-security  && mkdir -p /var/www/html/images  && chown -R www-data:www-data /var/www/html/images
+RUN a2enconf spirited-security  && mkdir -p /var/www/html/images /var/www/html/assets/images  && chown -R www-data:www-data /var/www/html/images /var/www/html/assets/images
 
 EXPOSE 10000
 CMD ["apache2-foreground"]
