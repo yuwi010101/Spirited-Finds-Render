@@ -8,5 +8,8 @@ COPY . /var/www/html/
 COPY .render/apache-security.conf /etc/apache2/conf-available/spirited-security.conf
 RUN a2enconf spirited-security  && mkdir -p /var/www/html/images /var/www/html/assets/images  && chown -R www-data:www-data /var/www/html/images /var/www/html/assets/images
 
+# Catch PHP parse errors during the build, before a broken version goes live.
+RUN find /var/www/html -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+
 EXPOSE 10000
 CMD ["apache2-foreground"]

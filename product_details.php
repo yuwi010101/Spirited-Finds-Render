@@ -1,80 +1,116 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/includes/security.php';
+require_once __DIR__ . '/config/db.php';
 
-include 'config/db.php';
-
-// Safe Helper Function para sa Image Paths
 if (!function_exists('get_image_path')) {
     function get_image_path(?string $path) {
-        if (empty($path)) {
-            return 'assets/images/logo.png';
-        }
-        $filename = basename(trim($path));
-        return 'assets/images/' . $filename;
+        if (empty($path)) return 'assets/images/logo.png';
+        return 'assets/images/' . basename(trim($path));
     }
 }
-
 $is_logged_in = isset($_SESSION['user_id']);
-$user_id = $is_logged_in ? intval($_SESSION['user_id']) : 0;
-$max_item_limit = 10; // Maximum limit bawat item
-
-// AUTH GUARD HANDLER: Kapag pinindot ang action nang hindi naka-login
-if (isset($_GET['action']) && $_GET['action'] === 'require_login') {
-    $_SESSION['toast_message'] = "Please log in or create an account to perform this action.";
-    $_SESSION['toast_type'] = "warning";
-    header("Location: login.php");
+$user_id = $is_logged_in ? (int) $_SESSION['user_id'] : 0;
+$max_item_limit = 10;
+$product_id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+if ($product_id === false) {
+    http_response_code(404);
+    exit('Product not found.');
+}
+if (($_GET['action'] ?? '') === 'require_login') {
+    $_SESSION['toast_message'] = 'Please log in to shop or review products.';
+    header('Location: login.php');
     exit();
 }
 
-// Suriin ang Product ID sa URL
-if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-$product_id = intval($_GET['id']);
-
-// POST HANDLER: ADD TO CART (Para sa naka-login na user)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_to_cart') {
-    if (!$is_logged_in) {
-        $_SESSION['toast_message'] = "Please log in or create an account to perform this action.";
-        $_SESSION['toast_type'] = "warning";
-        header("Location: login.php");
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_verify();
+    if (!$is_logged_in || ($_SESSION['role'] ?? '') !== 'customer') {
+        http_response_code(403);
+        exit('Please sign in as a customer.');
+    }
+    $action = (string) ($_POST['action'] ?? '');
+    if ($action === 'submit_review') {
+        $rating = filter_var($_POST['rating'] ?? null, FILTER_VALIDATE_INT);
+        $reviewText = trim((string) ($_POST['review_text'] ?? ''));
+        if ($rating === false || $rating < 1 || $rating > 5 || strlen($reviewText) > 1500) {
+            $_SESSION['toast_message'] = 'Choose 1–5 stars and write no more than 1,500 characters.';
+        } else {
+            $eligibleStmt = $conn->prepare("SELECT 1 FROM orders o JOIN order_items oi ON oi.order_id = o.order_id WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'Completed' LIMIT 1");
+            $eligibleStmt->bind_param('ii', $user_id, $product_id);
+            $eligibleStmt->execute();
+            $eligible = (bool) $eligibleStmt->get_result()->fetch_row();
+            $eligibleStmt->close();
+            if (!$eligible) {
+                $_SESSION['toast_message'] = 'You can review this product after your order is completed.';
+            } else {
+                $conn->begin_transaction();
+                try {
+                    $reviewStmt = $conn->prepare('INSERT INTO product_reviews (product_id, user_id, rating, review_text) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE rating=VALUES(rating), review_text=VALUES(review_text), updated_at=CURRENT_TIMESTAMP');
+                    $reviewStmt->bind_param('iiis', $product_id, $user_id, $rating, $reviewText);
+                    $reviewStmt->execute();
+                    $reviewStmt->close();
+                    $ratingStmt = $conn->prepare('UPDATE products SET rating = (SELECT COALESCE(ROUND(AVG(rating)),0) FROM product_reviews WHERE product_id = ?) WHERE product_id = ?');
+                    $ratingStmt->bind_param('ii', $product_id, $product_id);
+                    $ratingStmt->execute();
+                    $ratingStmt->close();
+                    $conn->commit();
+                    $_SESSION['toast_message'] = 'Your verified customer review has been saved.';
+                } catch (Throwable $e) {
+                    $conn->rollback();
+                    error_log('Save review failed: ' . $e->getMessage());
+                    $_SESSION['toast_message'] = 'Could not save your review. Please try again later.';
+                }
+            }
+        }
+        header('Location: product_details.php?id=' . $product_id . '#customer-reviews', true, 303);
         exit();
     }
-
-    $pid = intval($_POST['product_id']);
-    $qty = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
-    
-    // I-clamp ang quantity sa pagitan ng 1 at max_item_limit (10)
-    if ($qty < 1) $qty = 1;
-    if ($qty > $max_item_limit) $qty = $max_item_limit;
-
-    // Suriin kung ang item ay nasa cart na ng user sa database
-    $chk = $conn->prepare("SELECT quantity FROM cart WHERE user_id = ? AND product_id = ?");
-    $chk->bind_param("ii", $user_id, $pid);
-    $chk->execute();
-    $chk_res = $chk->get_result();
-
-    if ($chk_res && $chk_res->num_rows > 0) {
-        $row = $chk_res->fetch_assoc();
-        $new_qty = min($row['quantity'] + $qty, $max_item_limit);
-        $upd = $conn->prepare("UPDATE cart SET quantity = ? WHERE user_id = ? AND product_id = ?");
-        $upd->bind_param("iii", $new_qty, $user_id, $pid);
-        $upd->execute();
-        $upd->close();
-    } else {
-        $ins = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)");
-        $ins->bind_param("iii", $user_id, $pid, $qty);
-        $ins->execute();
-        $ins->close();
+    if ($action === 'add_to_cart') {
+        $pid = filter_var($_POST['product_id'] ?? null, FILTER_VALIDATE_INT);
+        $qty = filter_var($_POST['quantity'] ?? null, FILTER_VALIDATE_INT);
+        if ($pid !== $product_id || $qty === false || $qty < 1 || $qty > $max_item_limit) {
+            http_response_code(400);
+            exit('Invalid product or quantity.');
+        }
+        $conn->begin_transaction();
+        try {
+            $available = $conn->prepare('SELECT stock FROM products WHERE product_id = ? FOR UPDATE');
+            $available->bind_param('i', $pid);
+            $available->execute();
+            $found = $available->get_result()->fetch_assoc();
+            $available->close();
+            if (!$found || (int) $found['stock'] < $qty) {
+                throw new DomainException('This quantity is not currently in stock.');
+            }
+            $previous = $conn->prepare('SELECT quantity FROM cart WHERE user_id = ? AND product_id = ? FOR UPDATE');
+            $previous->bind_param('ii', $user_id, $pid);
+            $previous->execute();
+            $cart = $previous->get_result()->fetch_assoc();
+            $previous->close();
+            $newQty = ($cart ? (int) $cart['quantity'] : 0) + $qty;
+            if ($newQty > $max_item_limit || $newQty > (int) $found['stock']) {
+                throw new DomainException('Cart quantity exceeds the available stock or 10-item limit.');
+            }
+            if ($cart) {
+                $update = $conn->prepare('UPDATE cart SET quantity = ? WHERE user_id = ? AND product_id = ?');
+                $update->bind_param('iii', $newQty, $user_id, $pid);
+            } else {
+                $update = $conn->prepare('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)');
+                $update->bind_param('iii', $user_id, $pid, $newQty);
+            }
+            $update->execute();
+            $update->close();
+            $conn->commit();
+            header('Location: customer/cart.php', true, 303);
+            exit();
+        } catch (Throwable $e) {
+            $conn->rollback();
+            error_log('Add to cart failed: ' . $e->getMessage());
+            $_SESSION['toast_message'] = $e instanceof DomainException ? $e->getMessage() : 'Unable to add this item.';
+            header('Location: product_details.php?id=' . $product_id, true, 303);
+            exit();
+        }
     }
-    $chk->close();
-
-    header("Location: customer/cart.php");
-    exit();
 }
 
 // Kuhanin ang Detalye ng Main Product
@@ -88,12 +124,35 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    echo "<script>alert('Product not found!'); window.location.href='index.php';</script>";
+    http_response_code(404);
+    exit('Product not found.');
     exit();
 }
 
 $product = $result->fetch_assoc();
 $stmt->close();
+$reviewStat = $conn->prepare('SELECT COUNT(*) AS count_reviews, AVG(rating) AS average_rating FROM product_reviews WHERE product_id = ?');
+$reviewStat->bind_param('i', $product_id);
+$reviewStat->execute();
+$reviewStats = $reviewStat->get_result()->fetch_assoc();
+$reviewStat->close();
+$averageRating = (float) ($reviewStats['average_rating'] ?? 0);
+$reviewCount = (int) ($reviewStats['count_reviews'] ?? 0);
+
+$canReview = false;
+if ($is_logged_in && ($_SESSION['role'] ?? '') === 'customer') {
+    $elig = $conn->prepare("SELECT 1 FROM orders o JOIN order_items oi ON oi.order_id=o.order_id WHERE o.user_id=? AND oi.product_id=? AND o.status='Completed' LIMIT 1");
+    $elig->bind_param('ii', $user_id, $product_id);
+    $elig->execute();
+    $canReview = (bool) $elig->get_result()->fetch_row();
+    $elig->close();
+}
+$reviewQuery = $conn->prepare('SELECT r.rating, r.review_text, r.created_at, u.first_name, u.last_name FROM product_reviews r JOIN users u ON u.user_id=r.user_id WHERE r.product_id = ? ORDER BY r.updated_at DESC LIMIT 30');
+$reviewQuery->bind_param('i', $product_id);
+$reviewQuery->execute();
+$reviewRows = $reviewQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+$reviewQuery->close();
+
 
 // Kuhanin ang Related Products (hanggang 4 items)
 $related_query = "SELECT * FROM products WHERE category_id = ? AND product_id != ? LIMIT 4";
@@ -156,12 +215,12 @@ include 'includes/header.php';
                     <!-- Ratings -->
                     <div class="rating-stars mb-3 text-warning">
                         <?php 
-                        $rating = (int)$product['rating'];
+                        $rating = (int) round($averageRating);
                         for ($i = 1; $i <= 5; $i++) {
                             echo $i <= $rating ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
                         }
                         ?>
-                        <span class="text-muted ml-2">(<?php echo $rating; ?>.0)</span>
+                        <span class="text-muted ml-2">(<?php echo $reviewCount ? number_format($averageRating, 1) . ' / 5 · ' . $reviewCount . ' review(s)' : 'No reviews yet'; ?>)</span>
                     </div>
 
                     <!-- Price and Stock Status -->
@@ -181,6 +240,7 @@ include 'includes/header.php';
                     <!-- Quantity & Action Form -->
                     <form action="product_details.php?id=<?php echo $product_id; ?>" method="POST" class="d-flex align-items-center flex-wrap gap-3">
                         <input type="hidden" name="product_id" value="<?php echo $product['product_id']; ?>">
+                        <?php echo csrf_field(); ?>
                         <input type="hidden" name="action" value="add_to_cart">
                         
                         <div class="d-flex align-items-center mb-3 mb-sm-0 mr-3">
@@ -281,6 +341,52 @@ include 'includes/header.php';
                 <?php endwhile; ?>
             </div>
         <?php endif; ?>
+    </div>
+</section>
+
+
+<section class="container my-5" id="customer-reviews">
+    <div class="bg-white rounded shadow-sm p-4 p-md-5">
+        <h2 class="h3 font-weight-bold">Customer Ratings & Reviews</h2>
+        <p class="text-muted"><?php echo $reviewCount ? number_format($averageRating, 1) . '/5 from ' . $reviewCount . ' verified review(s)' : 'No verified ratings yet.'; ?></p>
+        <?php if ($canReview): ?>
+            <form method="POST" action="product_details.php?id=<?php echo (int)$product_id; ?>#customer-reviews" class="border rounded p-3 mb-4">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="action" value="submit_review">
+                <div class="form-group">
+                    <label for="review-rating">Your rating</label>
+                    <select id="review-rating" name="rating" class="form-control" required>
+                        <option value="">Choose rating</option>
+                        <option value="5">★★★★★ — Excellent</option>
+                        <option value="4">★★★★☆ — Good</option>
+                        <option value="3">★★★☆☆ — Average</option>
+                        <option value="2">★★☆☆☆ — Below expectations</option>
+                        <option value="1">★☆☆☆☆ — Poor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="review-comment">Share your experience (optional)</label>
+                    <textarea id="review-comment" name="review_text" maxlength="1500" rows="3" class="form-control"></textarea>
+                </div>
+                <button type="submit" class="btn btn-ghibli-primary">Submit / Update Review</button>
+            </form>
+        <?php elseif ($is_logged_in): ?>
+            <p class="text-muted small">Reviews are available after you purchase this product and the order is marked Completed.</p>
+        <?php else: ?>
+            <p class="text-muted small"><a href="login.php">Log in</a> to review a completed purchase.</p>
+        <?php endif; ?>
+        <?php if (!$reviewRows): ?><p class="text-muted">No customer reviews yet.</p><?php endif; ?>
+        <?php foreach ($reviewRows as $review): ?>
+            <article class="border-top py-3">
+                <div class="d-flex justify-content-between">
+                    <strong><?php echo esc(trim($review['first_name'] . ' ' . $review['last_name'])); ?></strong>
+                    <span class="text-warning"><?php echo str_repeat('★', (int) $review['rating']) . str_repeat('☆', 5 - (int) $review['rating']); ?></span>
+                </div>
+                <small class="text-success">Verified purchase</small>
+                <small class="text-muted ml-2"><?php echo esc(date('M j, Y', strtotime($review['created_at']))); ?></small>
+                <p class="mt-2"><?php echo nl2br(esc($review['review_text'])); ?></p>
+            </article>
+        <?php endforeach; ?>
     </div>
 </section>
 
